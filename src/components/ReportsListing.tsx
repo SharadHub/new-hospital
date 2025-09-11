@@ -23,6 +23,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
   const departments = ["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"];
+  const firms = ["Firm A", "Firm B", "Firm C"]; // Example firm data
 
   const filteredReports = selectedDepartment
     ? reports.filter((report) => report.department === selectedDepartment)
@@ -165,7 +166,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             background-color: #e5e7eb;
           }
 
-          .reports-table-container {
+          .reports-table-container, .firms-table-container {
             background-color: white;
             border-radius: 0.75rem;
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
@@ -216,7 +217,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             overflow-x: auto;
           }
 
-          .reports-table {
+          .reports-table, .firms-table {
             width: 100%;
             border-collapse: collapse;
           }
@@ -511,6 +512,15 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             background-color: #4b5563;
           }
 
+          .main-content {
+            display: flex;
+            gap: 1.5rem;
+          }
+
+          .reports-table-container, .firms-table-container {
+            flex: 1;
+          }
+
           @media (min-width: 640px) {
             .background-container {
               padding: 1.5rem;
@@ -540,6 +550,10 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             .modal-actions {
               flex-wrap: nowrap;
             }
+
+            .main-content {
+              flex-direction: row;
+            }
           }
 
           @media (min-width: 768px) {
@@ -557,6 +571,10 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
           }
 
           @media (max-width: 767px) {
+            .main-content {
+              flex-direction: column;
+            }
+
             .table-head th:nth-child(n+4) {
               display: none;
             }
@@ -613,101 +631,134 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
           </div>
         </div>
 
-        {/* Reports Table */}
-        <div className="reports-table-container">
-          <div className="table-header">
-            <h3 className="table-title">
-              <FileText size={20} color="#059669" />
-              Reports Listing
-            </h3>
+        {/* Main Content with Reports and Firms */}
+        <div className="main-content">
+          {/* Reports Table */}
+          <div className="reports-table-container">
+            <div className="table-header">
+              <h3 className="table-title">
+                <FileText size={20} color="#059669" />
+                Reports Listing
+              </h3>
+            </div>
+
+            {filteredReports.length === 0 ? (
+              <div className="empty-state">
+                <FileText size={48} className="empty-icon" />
+                <h3 className="empty-title">No reports found</h3>
+                <p className="empty-description">
+                  {selectedDepartment
+                    ? `No reports available for ${selectedDepartment} department`
+                    : "No reports have been uploaded yet"}
+                </p>
+              </div>
+            ) : (
+              <div className="table-wrapper">
+                <table className="reports-table">
+                  <thead className="table-head">
+                    <tr>
+                      <th>Patient</th>
+                      <th>Department</th>
+                      <th>Report Type</th>
+                      <th>Date</th>
+                      <th>Doctor</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="table-body">
+                    {filteredReports.map((report) => (
+                      <tr key={report.id}>
+                        <td>
+                          <div className="patient-cell">
+                            <User size={20} color="#9ca3af" />
+                            <div className="patient-info">
+                              <div className="patient-name">
+                                {getPatientName(report.patientId)}
+                              </div>
+                              <div className="patient-number">
+                                {getPatientNumber(report.patientId)}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="department-badge">
+                            {report.department}
+                          </span>
+                        </td>
+                        <td className="report-type">{report.reportType}</td>
+                        <td>
+                          <div className="date-cell">
+                            <Calendar size={16} />
+                            {new Date(report.uploadedAt).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="doctor-name">{report.uploadedBy}</td>
+                        <td>
+                          <div className="actions-cell">
+                            <button
+                              onClick={() => setSelectedReport(report)}
+                              className="action-button view"
+                              title="View Report"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <button
+                              onClick={() => handlePrintReport(report)}
+                              className="action-button print"
+                              title="Print Report"
+                            >
+                              <Printer size={16} />
+                            </button>
+                            {report.reportUrl && (
+                              <button
+                                className="action-button download"
+                                title="Download File"
+                              >
+                                <Download size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
-          
-
-          {filteredReports.length === 0 ? (
-            <div className="empty-state">
-              <FileText size={48} className="empty-icon" />
-              <h3 className="empty-title">No reports found</h3>
-              <p className="empty-description">
-                {selectedDepartment
-                  ? `No reports available for ${selectedDepartment} department`
-                  : "No reports have been uploaded yet"}
-              </p>
+          {/* Firms Table */}
+          <div className="firms-table-container">
+            <div className="table-header">
+              <h3 className="table-title">
+                <Building2 size={20} color="#059669" />
+                Firm Listing
+              </h3>
             </div>
-          ) : (
             <div className="table-wrapper">
-              <table className="reports-table">
+              <table className="firms-table">
                 <thead className="table-head">
                   <tr>
-                    <th>Patient</th>
+                    <th>Firm Name</th>
                     <th>Department</th>
-                    <th>Report Type</th>
-                    <th>Date</th>
-                    <th>Doctor</th>
-                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody className="table-body">
-                  {filteredReports.map((report) => (
-                    <tr key={report.id}>
-                      <td>
-                        <div className="patient-cell">
-                          <User size={20} color="#9ca3af" />
-                          <div className="patient-info">
-                            <div className="patient-name">
-                              {getPatientName(report.patientId)}
-                            </div>
-                            <div className="patient-number">
-                              {getPatientNumber(report.patientId)}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
+                  {firms.map((firm, index) => (
+                    <tr key={index}>
+                      <td>{firm}</td>
                       <td>
                         <span className="department-badge">
-                          {report.department}
+                          {departments[index % departments.length]}
                         </span>
-                      </td>
-                      <td className="report-type">{report.reportType}</td>
-                      <td>
-                        <div className="date-cell">
-                          <Calendar size={16} />
-                          {new Date(report.uploadedAt).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="doctor-name">{report.uploadedBy}</td>
-                      <td>
-                        <div className="actions-cell">
-                          <button
-                            onClick={() => setSelectedReport(report)}
-                            className="action-button view"
-                            title="View Report"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            onClick={() => handlePrintReport(report)}
-                            className="action-button print"
-                            title="Print Report"
-                          >
-                            <Printer size={16} />
-                          </button>
-                          {report.reportUrl && (
-                            <button
-                              className="action-button download"
-                              title="Download File"
-                            >
-                              <Download size={16} />
-                            </button>
-                          )}
-                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Report Detail Modal */}

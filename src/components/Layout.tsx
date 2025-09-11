@@ -26,7 +26,7 @@ const Layout: React.FC<LayoutProps> = ({
   const menuItems = [
     { id: "dashboard", label: "Dashboard", icon: Activity },
     { id: "patients", label: "Patient Registration", icon: Users },
-    { id: "upload", label: "Report Upload", icon: Upload },
+    // { id: "upload", label: "Report Upload", icon: Upload },
     { id: "reports", label: "Reports", icon: FileText },
     { id: "search", label: "Search & Filter", icon: Search },
   ];
@@ -108,8 +108,11 @@ const Layout: React.FC<LayoutProps> = ({
         .brand-text h1 {
           font-size: 1.25rem;
           font-weight: bold;
-          color: #111827;
+          color: #2563eb;
           margin: 0;
+          letter-spacing: 0.03em;
+          text-shadow: 0 1px 2px rgba(59,130,246,0.08);
+          text-align: center;
         }
 
         .brand-text p {
@@ -293,8 +296,8 @@ const Layout: React.FC<LayoutProps> = ({
               <Activity size={24} color="white" />
             </div>
             <div className="brand-text">
-              <h1>HMS</h1>
-              <p>Radiology Dept</p>
+              <h1>Bhaktapur International Hospital</h1>
+              <p>Radiology Department</p>
             </div>
           </div>
         </div>
@@ -329,23 +332,6 @@ const Layout: React.FC<LayoutProps> = ({
                 className="menu-btn"
               >
                 <Menu size={24} />
-              </button>
-              <h2 className="header-title">
-                {menuItems.find((item) => item.id === currentView)?.label ||
-                  "Dashboard"}
-              </h2>
-            </div>
-            <div className="header-right">
-              <div className="header-date">
-                {new Date().toLocaleDateString("en-US", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </div>
-              <button className="settings-btn">
-                <Settings size={20} />
               </button>
             </div>
           </div>
