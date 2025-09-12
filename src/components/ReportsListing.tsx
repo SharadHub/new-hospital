@@ -7,6 +7,7 @@ import {
   Printer,
   Download,
   Building2,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Patient, Report } from "../types";
 
@@ -23,7 +24,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
   const departments = ["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"];
-  const firms = ["Firm A", "Firm B", "Firm C"]; // Example firm data
+  const firms = ["Firm A", "Firm B", "Firm C"]; // Example firm data, treating as patients for image display
 
   const filteredReports = selectedDepartment
     ? reports.filter((report) => report.department === selectedDepartment)
@@ -88,6 +89,20 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
     }
   };
 
+  // Placeholder image URLs based on department (in real app, use report.reportUrl if it's an image)
+  const getPlaceholderImage = (dept: string) => {
+    const images: { [key: string]: string } = {
+      CT: "https://via.placeholder.com/150?text=CT+Scan",
+      MRI: "https://via.placeholder.com/150?text=MRI+Scan",
+      ECG: "https://via.placeholder.com/150?text=ECG+Graph",
+      USG: "https://via.placeholder.com/150?text=Ultrasound",
+      "X-ray": "https://via.placeholder.com/150?text=X-Ray",
+      TMT: "https://via.placeholder.com/150?text=TMT+Report",
+      Holter: "https://via.placeholder.com/150?text=Holter+Monitor",
+    };
+    return images[dept] || "https://via.placeholder.com/150?text=Image";
+  };
+
   return (
     <div className="background-container">
       <div className="reports-listing">
@@ -144,7 +159,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
 
           .filter-button {
             padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
+            border-radius: 0.5rem;  
             font-weight: 500;
             border: none;
             cursor: pointer;
@@ -213,69 +228,42 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             margin: 0;
           }
 
-          .table-wrapper {
-            overflow-x: auto;
+          .reports-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            padding: 1rem;
           }
 
-          .reports-table, .firms-table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-
-          .table-head {
+          .report-card {
             background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
           }
 
-          .table-head th {
-            padding: 0.75rem 1.5rem;
-            text-align: left;
+          .report-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+          }
+
+          .report-label {
             font-size: 0.75rem;
             font-weight: 500;
             color: #6b7280;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid #e5e7eb;
           }
 
-          .table-body tr {
-            border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.2s;
-          }
-
-          .table-body tr:hover {
-            background-color: #f9fafb;
-          }
-
-          .table-body td {
-            padding: 1rem 1.5rem;
-            white-space: nowrap;
-            vertical-align: top;
-          }
-
-          .patient-cell {
+          .report-value {
+            font-size: 0.875rem;
+            color: #111827;
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-          }
-
-          .patient-info {
-            min-width: 0;
-          }
-
-          .patient-name {
-            font-size: 0.875rem;
-            font-weight: 500;
-            color: #111827;
-            margin: 0;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-
-          .patient-number {
-            font-size: 0.875rem;
-            color: #6b7280;
-            margin: 0;
+            gap: 0.5rem;
           }
 
           .department-badge {
@@ -289,28 +277,11 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             color: #1e40af;
           }
 
-          .report-type {
-            font-size: 0.875rem;
-            color: #111827;
-          }
-
-          .date-cell {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: #6b7280;
-          }
-
-          .doctor-name {
-            font-size: 0.875rem;
-            color: #111827;
-          }
-
           .actions-cell {
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            margin-top: 0.5rem;
           }
 
           .action-button {
@@ -344,6 +315,48 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
 
           .action-button.download:hover {
             color: #6d28d9;
+          }
+
+          .firms-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+
+          .table-head {
+            background-color: #f9fafb;
+          }
+
+          .table-head th {
+            padding: 0.75rem 1.5rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid #e5e7eb;
+          }
+
+          .table-body tr {
+            border-bottom: 1px solid #e5e7eb;
+            transition: background-color 0.2s;
+          }
+
+          .table-body tr:hover {
+            background-color: #f9fafb;
+          }
+
+          .table-body td {
+            padding: 1rem 1.5rem;
+            white-space: nowrap;
+            vertical-align: middle;
+          }
+
+          .firm-image {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 0.25rem;
           }
 
           .modal-overlay {
@@ -514,6 +527,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
 
           .main-content {
             display: flex;
+            flex-direction: column;
             gap: 1.5rem;
           }
 
@@ -554,6 +568,19 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             .main-content {
               flex-direction: row;
             }
+
+            .report-field {
+              flex-direction: row;
+              justify-content: space-between;
+            }
+
+            .report-label {
+              flex: 1;
+            }
+
+            .report-value {
+              flex: 2;
+            }
           }
 
           @media (min-width: 768px) {
@@ -561,37 +588,8 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
               gap: 1.5rem;
             }
 
-            .table-head th {
-              font-size: 0.75rem;
-            }
-
             .modal-body {
               padding: 1.5rem;
-            }
-          }
-
-          @media (max-width: 767px) {
-            .main-content {
-              flex-direction: column;
-            }
-
-            .table-head th:nth-child(n+4) {
-              display: none;
-            }
-
-            .table-body td:nth-child(n+4) {
-              display: none;
-            }
-
-            .patient-name {
-              max-width: 120px;
-            }
-
-            .report-type {
-              max-width: 100px;
-              white-space: nowrap;
-              overflow: hidden;
-              text-overflow: ellipsis;
             }
           }
         `}</style>
@@ -633,7 +631,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
 
         {/* Main Content with Reports and Firms */}
         <div className="main-content">
-          {/* Reports Table */}
+          {/* Reports Listing - Vertical Cards */}
           <div className="reports-table-container">
             <div className="table-header">
               <h3 className="table-title">
@@ -653,82 +651,68 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
                 </p>
               </div>
             ) : (
-              <div className="table-wrapper">
-                <table className="reports-table">
-                  <thead className="table-head">
-                    <tr>
-                      <th>Patient</th>
-                      <th>Department</th>
-                      <th>Report Type</th>
-                      <th>Date</th>
-                      <th>Doctor</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="table-body">
-                    {filteredReports.map((report) => (
-                      <tr key={report.id}>
-                        <td>
-                          <div className="patient-cell">
-                            <User size={20} color="#9ca3af" />
-                            <div className="patient-info">
-                              <div className="patient-name">
-                                {getPatientName(report.patientId)}
-                              </div>
-                              <div className="patient-number">
-                                {getPatientNumber(report.patientId)}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="department-badge">
-                            {report.department}
-                          </span>
-                        </td>
-                        <td className="report-type">{report.reportType}</td>
-                        <td>
-                          <div className="date-cell">
-                            <Calendar size={16} />
-                            {new Date(report.uploadedAt).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td className="doctor-name">{report.uploadedBy}</td>
-                        <td>
-                          <div className="actions-cell">
-                            <button
-                              onClick={() => setSelectedReport(report)}
-                              className="action-button view"
-                              title="View Report"
-                            >
-                              <Eye size={16} />
-                            </button>
-                            <button
-                              onClick={() => handlePrintReport(report)}
-                              className="action-button print"
-                              title="Print Report"
-                            >
-                              <Printer size={16} />
-                            </button>
-                            {report.reportUrl && (
-                              <button
-                                className="action-button download"
-                                title="Download File"
-                              >
-                                <Download size={16} />
-                              </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="reports-list">
+                {filteredReports.map((report) => (
+                  <div key={report.id} className="report-card">
+                    <div className="report-field">
+                      <span className="report-label">Patient</span>
+                      <div className="report-value">
+                        <User size={16} color="#9ca3af" />
+                        {getPatientName(report.patientId)} ({getPatientNumber(report.patientId)})
+                      </div>
+                    </div>
+                    <div className="report-field">
+                      <span className="report-label">Department</span>
+                      <span className="report-value department-badge">
+                        {report.department}
+                      </span>
+                    </div>
+                    <div className="report-field">
+                      <span className="report-label">Report Type</span>
+                      <span className="report-value">{report.reportType}</span>
+                    </div>
+                    <div className="report-field">
+                      <span className="report-label">Date</span>
+                      <div className="report-value">
+                        <Calendar size={16} />
+                        {new Date(report.uploadedAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                    <div className="report-field">
+                      <span className="report-label">Doctor</span>
+                      <span className="report-value">{report.uploadedBy}</span>
+                    </div>
+                    <div className="actions-cell">
+                      <button
+                        onClick={() => setSelectedReport(report)}
+                        className="action-button view"
+                        title="View Report"
+                      >
+                        <Eye size={16} />
+                      </button>
+                      <button
+                        onClick={() => handlePrintReport(report)}
+                        className="action-button print"
+                        title="Print Report"
+                      >
+                        <Printer size={16} />
+                      </button>
+                      {report.reportUrl && (
+                        <button
+                          className="action-button download"
+                          title="Download File"
+                        >
+                          <Download size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Firms Table */}
+          {/* Firm Listing with Images */}
           <div className="firms-table-container">
             <div className="table-header">
               <h3 className="table-title">
@@ -740,21 +724,32 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
               <table className="firms-table">
                 <thead className="table-head">
                   <tr>
-                    <th>Firm Name</th>
+                    <th>Patient</th>
                     <th>Department</th>
+                    <th>Image</th>
                   </tr>
                 </thead>
                 <tbody className="table-body">
-                  {firms.map((firm, index) => (
-                    <tr key={index}>
-                      <td>{firm}</td>
-                      <td>
-                        <span className="department-badge">
-                          {departments[index % departments.length]}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {firms.map((firm, index) => {
+                    const dept = departments[index % departments.length];
+                    return (
+                      <tr key={index}>
+                        <td>{firm}</td>
+                        <td>
+                          <span className="department-badge">
+                            {dept}
+                          </span>
+                        </td>
+                        <td>
+                          <img
+                            src={getPlaceholderImage(dept)}
+                            alt={`${dept} Image`}
+                            className="firm-image"
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

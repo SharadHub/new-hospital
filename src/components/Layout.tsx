@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import {
   Activity,
-  Users,
+  // Users,
   FileText,
   Search,
-  Upload,
-  Settings,
+  // Upload,
+  // Settings,
   Menu,
   X,
 } from "lucide-react";
@@ -24,8 +24,8 @@ const Layout: React.FC<LayoutProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: Activity },
-    { id: "patients", label: "Patient Registration", icon: Users },
+    { id: "radiology", label: "Radiology", icon: Activity },
+    // { id: "patients", label: "Patient Registration", icon: Users },
     // { id: "upload", label: "Report Upload", icon: Upload },
     { id: "reports", label: "Reports", icon: FileText },
     { id: "search", label: "Search & Filter", icon: Search },
