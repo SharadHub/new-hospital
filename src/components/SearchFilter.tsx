@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from "react";
 import {
   Search,
-  Filter,
+  // Filter,
   Calendar,
   User,
-  Building2,
+  // Building2,
   FileText,
   X,
 } from "lucide-react";

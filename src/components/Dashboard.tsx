@@ -462,7 +462,7 @@ const Dashboard: React.FC<DashboardProps> = ({ patients, reports }) => {
           <span>Department Breakdown</span>
         </h3>
         <div className="department-grid">
-          {["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"].map((dept) => (
+          {["CT Scan", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"].map((dept) => (
             <div key={dept} className="department-item">
               <div className="department-value">
                 {departmentStats[dept] || 0}

@@ -22,7 +22,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
   reports,
   initialDepartmentFilter = "",
 }) => {
-  const [selectedDepartment, setSelectedDepartment] = useState<string>(initialDepartmentFilter);
+  const selectedDepartment = initialDepartmentFilter;  // No state, just use prop directly
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
   const departments = ["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"];
@@ -595,41 +595,6 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             }
           }
         `}</style>
-
-        {/* Department Filter */}
-        <div className="filter-section">
-          <div className="filter-header">
-            <h3 className="filter-title">
-              <Building2 size={20} color="#2563eb" />
-              Filter by Department
-            </h3>
-            <div className="filter-count">
-              {filteredReports.length} report
-              {filteredReports.length !== 1 ? "s" : ""} found
-            </div>
-          </div>
-          <div className="filter-buttons">
-            <button
-              onClick={() => setSelectedDepartment("")}
-              className={`filter-button ${
-                selectedDepartment === "" ? "active" : "inactive"
-              }`}
-            >
-              All Departments
-            </button>
-            {departments.map((dept) => (
-              <button
-                key={dept}
-                onClick={() => setSelectedDepartment(dept)}
-                className={`filter-button ${
-                  selectedDepartment === dept ? "active" : "inactive"
-                }`}
-              >
-                {dept}
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Main Content with Reports and Firms */}
         <div className="main-content">
