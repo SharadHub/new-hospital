@@ -39,23 +39,33 @@ function App() {
   };
 
   const renderCurrentView = () => {
-    switch (currentView) {
-      case "dashboard":
-        return <Dashboard patients={patients} reports={reports} />;
-      case "patients":
-        return <PatientRegistration onAddPatient={handleAddPatient} />;
-      case "upload":
-        return (
-          <ReportUpload patients={patients} onAddReport={handleAddReport} />
-        );
-      case "reports":
-        return <ReportsListing patients={patients} reports={reports} />;
-      case "search":
-        return <SearchFilter patients={patients} reports={reports} />;
-      default:
-        return <Dashboard patients={patients} reports={reports} />;
-    }
-  };
+  // Handle department-specific reports view
+  if (currentView.startsWith('reports-')) {
+    const department = currentView.replace('reports-', '').toUpperCase();
+    return <ReportsListing 
+      patients={patients} 
+      reports={reports} 
+      initialDepartmentFilter={department}
+    />;
+  }
+
+  switch (currentView) {
+    case "dashboard":
+      return <Dashboard patients={patients} reports={reports} />;
+    case "patients":
+      return <PatientRegistration onAddPatient={handleAddPatient} />;
+    case "upload":
+      return (
+        <ReportUpload patients={patients} onAddReport={handleAddReport} />
+      );
+    case "reports":
+      return <ReportsListing patients={patients} reports={reports} />;
+    case "search":
+      return <SearchFilter patients={patients} reports={reports} />;
+    default:
+      return <Dashboard patients={patients} reports={reports} />;
+  }
+};
 
   return (
     <Layout currentView={currentView} onViewChange={setCurrentView}>

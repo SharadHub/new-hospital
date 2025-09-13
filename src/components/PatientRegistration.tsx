@@ -1,5 +1,13 @@
 import React, { useState } from "react";
-import { User, MapPin, Hash, Building2, Save, AlertCircle } from "lucide-react";
+import {
+  User,
+  MapPin,
+  Hash,
+  Building2,
+  Save,
+  AlertCircle,
+  Calendar,
+} from "lucide-react";
 import { Patient, Department } from "../types";
 
 interface PatientRegistrationProps {
@@ -11,6 +19,7 @@ const PatientRegistration: React.FC<PatientRegistrationProps> = ({
 }) => {
   const [formData, setFormData] = useState({
     name: "",
+    age: "",
     number: "",
     address: "",
     department: "" as Department | "",
@@ -33,6 +42,15 @@ const PatientRegistration: React.FC<PatientRegistrationProps> = ({
 
     if (!formData.name.trim()) {
       newErrors.name = "Patient name is required";
+    }
+
+    if (!formData.age.trim()) {
+      newErrors.age = "Patient age is required";
+    } else {
+      const age = parseInt(formData.age);
+      if (isNaN(age) || age < 0 || age > 150) {
+        newErrors.age = "Please enter a valid age (0-150)";
+      }
     }
 
     if (!formData.number.trim()) {
@@ -66,6 +84,7 @@ const PatientRegistration: React.FC<PatientRegistrationProps> = ({
 
       onAddPatient({
         name: formData.name.trim(),
+        age: formData.age.trim(),
         number: formData.number.trim(),
         address: formData.address.trim(),
         department: formData.department as Department,
@@ -74,6 +93,7 @@ const PatientRegistration: React.FC<PatientRegistrationProps> = ({
       // Reset form
       setFormData({
         name: "",
+        age: "",
         number: "",
         address: "",
         department: "",
@@ -396,6 +416,29 @@ const PatientRegistration: React.FC<PatientRegistrationProps> = ({
                 <p className="error-message">
                   <AlertCircle size={16} />
                   {errors.name}
+                </p>
+              )}
+            </div>
+
+            {/* Patient Age */}
+            <div className="form-group">
+              <label className="form-label">
+                <Calendar size={16} />
+                Patient Age
+              </label>
+              <input
+                type="number"
+                value={formData.age}
+                onChange={(e) => handleInputChange("age", e.target.value)}
+                className={`form-input ${errors.age ? "error" : ""}`}
+                placeholder="Enter patient's age"
+                min="0"
+                max="150"
+              />
+              {errors.age && (
+                <p className="error-message">
+                  <AlertCircle size={16} />
+                  {errors.age}
                 </p>
               )}
             </div>

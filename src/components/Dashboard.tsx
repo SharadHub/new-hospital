@@ -4,7 +4,7 @@ import {
   FileText,
   Activity,
   TrendingUp,
-  Calendar,
+  // Calendar,
   Clock,
 } from "lucide-react";
 import { Patient, Report } from "../types";
@@ -37,7 +37,7 @@ const Dashboard: React.FC<DashboardProps> = ({ patients, reports }) => {
   const StatCard: React.FC<{
     title: string;
     value: number;
-    icon: React.ComponentType<any>;
+    icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
     color: string;
     trend?: string;
   }> = ({ title, value, icon: Icon, color, trend }) => (
@@ -54,7 +54,7 @@ const Dashboard: React.FC<DashboardProps> = ({ patients, reports }) => {
           )}
         </div>
         <div className={`stat-icon ${color}`}>
-          <Icon size={20} color="white" />
+          <Icon width={20} height={20} fill="white" />
         </div>
       </div>
     </div>

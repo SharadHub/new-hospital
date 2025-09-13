@@ -7,20 +7,22 @@ import {
   Printer,
   Download,
   Building2,
-  Image as ImageIcon,
+  // Image as ImageIcon,
 } from "lucide-react";
 import { Patient, Report } from "../types";
 
 interface ReportsListingProps {
   patients: Patient[];
   reports: Report[];
+  initialDepartmentFilter?: string;
 }
 
 const ReportsListing: React.FC<ReportsListingProps> = ({
   patients,
   reports,
+  initialDepartmentFilter = "",
 }) => {
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>(initialDepartmentFilter);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
   const departments = ["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"];
