@@ -395,16 +395,6 @@ const Layout: React.FC<LayoutProps> = ({
                   >
                     <div className="dropdown-header">Radiology Services</div>
 
-                    <button
-                      onClick={() => handleMenuItemClick("patients")}
-                      className={`dropdown-item ${
-                        currentView === "patients" ? "active" : ""
-                      }`}
-                    >
-                      <Users size={16} />
-                      <span>Patient Registration</span>
-                    </button>
-
                     <div className="dropdown-divider"></div>
 
                     {["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"].map(
