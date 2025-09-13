@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import Layout from "./components/Layout"
 import Dashboard from "./components/Dashboard"
 import PatientRegistration from "./components/PatientRegistration"
@@ -11,6 +11,16 @@ import DepartmentDetail from "./components/DepartmentDetail"
 import ReportDetailsPopup from "./components/ReportDetailsPopup"
 import FirmViewing from "./components/FirmViewing"
 import SearchFilter from "./components/SearchFilter"
+// Import the department components from App1
+import {
+  CT,
+  MRI,
+  ECG,
+  USG,
+  Xray,
+  TMT,
+  Holter,
+} from "./components/DepartmentComponent"
 import { useLocalStorage } from "./hooks/useLocalStorage"
 import type { Patient, Report } from "./types"
 import { mockPatients, mockReports } from "./utils/mockData"
@@ -94,7 +104,7 @@ function App() {
       )
     }
 
-    // Handle legacy department-specific reports view
+    // Handle legacy department-specific reports view from App2
     if (currentView.startsWith("reports-")) {
       const department = currentView.replace("reports-", "").toUpperCase()
       return <ReportsListing patients={patients} reports={reports} initialDepartmentFilter={department} />
@@ -102,6 +112,7 @@ function App() {
 
     switch (currentView) {
       case "dashboard":
+      case "Radiology": // Handle Radiology click from App1
         return <Dashboard patients={patients} reports={reports} />
       case "patients":
         return <PatientRegistration onAddPatient={handleAddPatient} />
@@ -111,6 +122,21 @@ function App() {
         return <ReportsMain onDepartmentSelect={handleDepartmentSelect} />
       case "search":
         return <SearchFilter patients={patients} reports={reports} />
+      // Department-specific views from App1
+      case "ct":
+        return <CT patients={patients} reports={reports} />
+      case "mri":
+        return <MRI patients={patients} reports={reports} />
+      case "ecg":
+        return <ECG patients={patients} reports={reports} />
+      case "usg":
+        return <USG patients={patients} reports={reports} />
+      case "x-ray":
+        return <Xray patients={patients} reports={reports} />
+      case "tmt":
+        return <TMT patients={patients} reports={reports} />
+      case "holter":
+        return <Holter patients={patients} reports={reports} />
       default:
         return <Dashboard patients={patients} reports={reports} />
     }

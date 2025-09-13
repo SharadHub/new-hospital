@@ -7,31 +7,43 @@ import {
   Printer,
   Download,
   Building2,
+  Activity,
+  Edit,
+  Save,
+  X,
 } from "lucide-react";
 import { Patient, Report } from "../types";
 
-interface ReportsListingProps {
+interface DepartmentViewProps {
   patients: Patient[];
   reports: Report[];
-  initialDepartmentFilter?: string;
+  departmentName: string;
+  departmentIcon?: React.ComponentType<any>;
+  onUpdateReport?: (updatedReport: Report) => void; // Callback to handle report updates
 }
 
-const ReportsListing: React.FC<ReportsListingProps> = ({
+const DepartmentView: React.FC<DepartmentViewProps> = ({
   patients,
   reports,
-  initialDepartmentFilter = "",
+  departmentName,
+  departmentIcon: DepartmentIcon = Activity,
+  onUpdateReport,
 }) => {
-  const [selectedDepartment, setSelectedDepartment] = useState<string>(
-    initialDepartmentFilter
-  );
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Report>>({});
 
-  const departments = ["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"];
-  const firms = ["Firm A", "Firm B", "Firm C"];
+  // Filter data for this specific department
+  const departmentReports = reports.filter(
+    (report) => report.department === departmentName
+  );
 
-  const filteredReports = selectedDepartment
-    ? reports.filter((report) => report.department === selectedDepartment)
-    : reports;
+  // Example firms data - in real app, this would come from props or API
+  const firms = [
+    `${departmentName} Firm A`,
+    `${departmentName} Firm B`,
+    `${departmentName} Firm C`,
+  ];
 
   const getPatientName = (patientId: string) => {
     const patient = patients.find((p) => p.id === patientId);
@@ -43,12 +55,49 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
     return patient ? patient.number : "N/A";
   };
 
+  const handleEditReport = (report: Report) => {
+    setEditingReport(report);
+    setEditForm({ ...report });
+  };
+
+  const handleSaveEdit = () => {
+    if (editingReport && editForm) {
+      const updatedReport = { ...editingReport, ...editForm };
+
+      // Call the update callback if provided
+      if (onUpdateReport) {
+        onUpdateReport(updatedReport);
+      }
+
+      // Close edit mode
+      setEditingReport(null);
+      setEditForm({});
+
+      // If this report was being viewed in modal, update it
+      if (selectedReport && selectedReport.id === editingReport.id) {
+        setSelectedReport(updatedReport);
+      }
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReport(null);
+    setEditForm({});
+  };
+
+  const handleFormChange = (field: keyof Report, value: string) => {
+    setEditForm((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
   const handlePrintReport = (report: Report) => {
     const patient = patients.find((p) => p.id === report.patientId);
     const printContent = `
       <html>
         <head>
-          <title>Medical Report - ${report.reportType}</title>
+          <title>${departmentName} Report - ${report.reportType}</title>
           <style>
             body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
             .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
@@ -59,8 +108,8 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
         </head>
         <body>
           <div class="header">
-            <h1>Hospital Management System</h1>
-            <h2>Radiology Department</h2>
+            <h1>Bhaktapur International Hospital</h1>
+            <h2>Radiology Department - ${departmentName}</h2>
           </div>
           <div class="patient-info">
             <h3>Patient Information</h3>
@@ -92,22 +141,27 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
     }
   };
 
+  // Placeholder image URLs based on department
   const getPlaceholderImage = (dept: string) => {
     const images: { [key: string]: string } = {
-      CT: "https://via.placeholder.com/150?text=CT+Scan",
-      MRI: "https://via.placeholder.com/150?text=MRI+Scan",
-      ECG: "https://via.placeholder.com/150?text=ECG+Graph",
-      USG: "https://via.placeholder.com/150?text=Ultrasound",
-      "X-ray": "https://via.placeholder.com/150?text=X-Ray",
-      TMT: "https://via.placeholder.com/150?text=TMT+Report",
-      Holter: "https://via.placeholder.com/150?text=Holter+Monitor",
+      CT: "https://via.placeholder.com/150/3b82f6/ffffff?text=CT+Scan",
+      MRI: "https://via.placeholder.com/150/10b981/ffffff?text=MRI+Scan",
+      ECG: "https://via.placeholder.com/150/8b5cf6/ffffff?text=ECG+Graph",
+      USG: "https://via.placeholder.com/150/f97316/ffffff?text=Ultrasound",
+      "X-ray": "https://via.placeholder.com/150/ef4444/ffffff?text=X-Ray",
+      TMT: "https://via.placeholder.com/150/06b6d4/ffffff?text=TMT+Report",
+      Holter:
+        "https://via.placeholder.com/150/84cc16/ffffff?text=Holter+Monitor",
     };
-    return images[dept] || "https://via.placeholder.com/150?text=Image";
+    return (
+      images[dept] ||
+      "https://via.placeholder.com/150/6b7280/ffffff?text=Medical+Image"
+    );
   };
 
   return (
     <div className="background-container">
-      <div className="reports-listing">
+      <div className="department-view">
         <style>{`
           .background-container {
             background: linear-gradient(135deg, #3b82f6 0%, #93c5fd 25%, #ffffff 50%, #dbeafe 75%, #1e40af 100%);
@@ -115,88 +169,28 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             padding: 1rem;
           }
 
-          .reports-listing {
+          .department-view {
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
           }
 
-          .filter-section {
-            background-color: white;
+          .content-section {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
             border-radius: 0.75rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
-            padding: 1.5rem;
-          }
-
-          .filter-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          }
-
-          .filter-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #111827;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-          }
-
-          .filter-count {
-            font-size: 0.875rem;
-            color: #6b7280;
-          }
-
-          .filter-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          }
-
-          .filter-button {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;  
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.875rem;
-          }
-
-          .filter-button.active {
-            background-color: #2563eb;
-            color: white;
-          }
-
-          .filter-button.inactive {
-            background-color: #f3f4f6;
-            color: #374151;
-          }
-
-          .filter-button.inactive:hover {
-            background-color: #e5e7eb;
-          }
-
-          .reports-table-container, .firms-table-container {
-            background-color: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 0 20px rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             overflow: hidden;
           }
 
-          .table-header {
+          .section-header {
             padding: 1rem 1.5rem;
             border-bottom: 1px solid #e5e7eb;
+            background-color: #f9fafb;
           }
 
-          .table-title {
+          .section-title {
             font-size: 1.125rem;
             font-weight: 600;
             color: #111827;
@@ -245,6 +239,18 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+            transition: all 0.2s ease;
+          }
+
+          .report-card:hover {
+            background-color: #f3f4f6;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+          }
+
+          .report-card.editing {
+            background-color: #fef3c7;
+            border-color: #f59e0b;
           }
 
           .report-field {
@@ -266,6 +272,76 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             display: flex;
             align-items: center;
             gap: 0.5rem;
+          }
+
+          .edit-input {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            width: 100%;
+            background-color: white;
+          }
+
+          .edit-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 1px #3b82f6;
+          }
+
+          .edit-textarea {
+            padding: 0.5rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            width: 100%;
+            background-color: white;
+            min-height: 80px;
+            resize: vertical;
+            font-family: inherit;
+          }
+
+          .edit-textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 1px #3b82f6;
+          }
+
+          .edit-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+          }
+
+          .edit-button {
+            padding: 0.5rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+          }
+
+          .edit-button.save {
+            background-color: #059669;
+            color: white;
+          }
+
+          .edit-button.save:hover {
+            background-color: #047857;
+          }
+
+          .edit-button.cancel {
+            background-color: #6b7280;
+            color: white;
+          }
+
+          .edit-button.cancel:hover {
+            background-color: #4b5563;
           }
 
           .department-badge {
@@ -291,8 +367,12 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             border-radius: 0.25rem;
             border: none;
             cursor: pointer;
-            transition: color 0.2s;
+            transition: all 0.2s;
             background: none;
+          }
+
+          .action-button:hover {
+            transform: scale(1.1);
           }
 
           .action-button.view {
@@ -301,6 +381,14 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
 
           .action-button.view:hover {
             color: #1d4ed8;
+          }
+
+          .action-button.edit {
+            color: #f59e0b;
+          }
+
+          .action-button.edit:hover {
+            color: #d97706;
           }
 
           .action-button.print {
@@ -355,10 +443,22 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
           }
 
           .firm-image {
-            width: 50px;
-            height: 50px;
+            width: 60px;
+            height: 60px;
             object-fit: cover;
-            border-radius: 0.25rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          }
+
+          .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+          }
+
+          .content-section {
+            flex: 1;
+            min-height: 200px;
           }
 
           .modal-overlay {
@@ -527,44 +627,13 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
             background-color: #4b5563;
           }
 
-          .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-          }
-
-          .reports-table-container, .firms-table-container {
-            flex: 1;
-          }
-
           @media (min-width: 640px) {
             .background-container {
               padding: 1.5rem;
             }
 
-            .filter-section {
-              padding: 1.5rem;
-            }
-
-            .filter-header {
-              flex-wrap: nowrap;
-            }
-
-            .filter-button {
-              font-size: 0.875rem;
-              padding: 0.5rem 1rem;
-            }
-
-            .table-header {
-              padding: 1rem 1.5rem;
-            }
-
             .info-grid {
               grid-template-columns: repeat(2, 1fr);
-            }
-
-            .modal-actions {
-              flex-wrap: nowrap;
             }
 
             .main-content {
@@ -586,136 +655,180 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
           }
 
           @media (min-width: 768px) {
-            .reports-listing {
-              gap: 1.5rem;
-            }
-
-            .modal-body {
-              padding: 1.5rem;
+            .department-view {
+              gap: 2rem;
             }
           }
         `}</style>
 
-        <div className="filter-section">
-          <div className="filter-header">
-            <h3 className="filter-title">
-              <Building2 size={20} color="#2563eb" />
-              Filter by Department
-            </h3>
-            <div className="filter-count">
-              {filteredReports.length} report
-              {filteredReports.length !== 1 ? "s" : ""} found
-            </div>
-          </div>
-          <div className="filter-buttons">
-            <button
-              onClick={() => setSelectedDepartment("")}
-              className={`filter-button ${
-                selectedDepartment === "" ? "active" : "inactive"
-              }`}
-            >
-              All Departments
-            </button>
-            {departments.map((dept) => (
-              <button
-                key={dept}
-                onClick={() => setSelectedDepartment(dept)}
-                className={`filter-button ${
-                  selectedDepartment === dept ? "active" : "inactive"
-                }`}
-              >
-                {dept}
-              </button>
-            ))}
-          </div>
-        </div>
-
+        {/* Main Content with Reports and Firms */}
         <div className="main-content">
-          <div className="reports-table-container">
-            <div className="table-header">
-              <h3 className="table-title">
+          {/* Reports Section */}
+          <div className="content-section">
+            <div className="section-header">
+              <h3 className="section-title">
                 <FileText size={20} color="#059669" />
-                Reports Listing
+                {departmentName} Reports Listing
               </h3>
             </div>
 
-            {filteredReports.length === 0 ? (
+            {departmentReports.length === 0 ? (
               <div className="empty-state">
                 <FileText size={48} className="empty-icon" />
-                <h3 className="empty-title">No reports found</h3>
+                <h3 className="empty-title">
+                  No {departmentName} reports found
+                </h3>
                 <p className="empty-description">
-                  {selectedDepartment
-                    ? `No reports available for ${selectedDepartment} department`
-                    : "No reports have been uploaded yet"}
+                  No reports have been uploaded for {departmentName} department
+                  yet
                 </p>
               </div>
             ) : (
               <div className="reports-list">
-                {filteredReports.map((report) => (
-                  <div key={report.id} className="report-card">
-                    <div className="report-field">
-                      <span className="report-label">Patient</span>
-                      <div className="report-value">
-                        <User size={16} color="#9ca3af" />
-                        {getPatientName(report.patientId)} ({getPatientNumber(report.patientId)})
-                      </div>
-                    </div>
-                    <div className="report-field">
-                      <span className="report-label">Department</span>
-                      <span className="report-value department-badge">
-                        {report.department}
-                      </span>
-                    </div>
-                    <div className="report-field">
-                      <span className="report-label">Report Type</span>
-                      <span className="report-value">{report.reportType}</span>
-                    </div>
-                    <div className="report-field">
-                      <span className="report-label">Date</span>
-                      <div className="report-value">
-                        <Calendar size={16} />
-                        {new Date(report.uploadedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="report-field">
-                      <span className="report-label">Doctor</span>
-                      <span className="report-value">{report.uploadedBy}</span>
-                    </div>
-                    <div className="actions-cell">
-                      <button
-                        onClick={() => setSelectedReport(report)}
-                        className="action-button view"
-                        title="View Report"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        onClick={() => handlePrintReport(report)}
-                        className="action-button print"
-                        title="Print Report"
-                      >
-                        <Printer size={16} />
-                      </button>
-                      {report.reportUrl && (
-                        <button
-                          className="action-button download"
-                          title="Download File"
-                        >
-                          <Download size={16} />
-                        </button>
-                      )}
-                    </div>
+                {departmentReports.map((report) => (
+                  <div
+                    key={report.id}
+                    className={`report-card ${
+                      editingReport?.id === report.id ? "editing" : ""
+                    }`}
+                  >
+                    {editingReport?.id === report.id ? (
+                      // Edit Mode
+                      <>
+                        <div className="report-field">
+                          <span className="report-label">Report Type</span>
+                          <input
+                            type="text"
+                            value={editForm.reportType || ""}
+                            onChange={(e) =>
+                              handleFormChange("reportType", e.target.value)
+                            }
+                            className="edit-input"
+                            placeholder="Enter report type"
+                          />
+                        </div>
+                        <div className="report-field">
+                          <span className="report-label">Doctor</span>
+                          <input
+                            type="text"
+                            value={editForm.uploadedBy || ""}
+                            onChange={(e) =>
+                              handleFormChange("uploadedBy", e.target.value)
+                            }
+                            className="edit-input"
+                            placeholder="Enter doctor name"
+                          />
+                        </div>
+                        <div className="report-field">
+                          <span className="report-label">Report Content</span>
+                          <textarea
+                            value={editForm.reportText || ""}
+                            onChange={(e) =>
+                              handleFormChange("reportText", e.target.value)
+                            }
+                            className="edit-textarea"
+                            placeholder="Enter report details"
+                          />
+                        </div>
+                        <div className="edit-actions">
+                          <button
+                            onClick={handleSaveEdit}
+                            className="edit-button save"
+                          >
+                            <Save size={16} />
+                            Save Changes
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="edit-button cancel"
+                          >
+                            <X size={16} />
+                            Cancel
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      // View Mode
+                      <>
+                        <div className="report-field">
+                          <span className="report-label">Patient</span>
+                          <div className="report-value">
+                            <User size={16} color="#9ca3af" />
+                            {getPatientName(report.patientId)} (
+                            {getPatientNumber(report.patientId)})
+                          </div>
+                        </div>
+                        <div className="report-field">
+                          <span className="report-label">Department</span>
+                          <span className="report-value department-badge">
+                            {report.department}
+                          </span>
+                        </div>
+                        <div className="report-field">
+                          <span className="report-label">Report Type</span>
+                          <span className="report-value">
+                            {report.reportType}
+                          </span>
+                        </div>
+                        <div className="report-field">
+                          <span className="report-label">Date</span>
+                          <div className="report-value">
+                            <Calendar size={16} />
+                            {new Date(report.uploadedAt).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <div className="report-field">
+                          <span className="report-label">Doctor</span>
+                          <span className="report-value">
+                            {report.uploadedBy}
+                          </span>
+                        </div>
+                        <div className="actions-cell">
+                          <button
+                            onClick={() => setSelectedReport(report)}
+                            className="action-button view"
+                            title="View Report"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleEditReport(report)}
+                            className="action-button edit"
+                            title="Edit Report"
+                            style={{ color: "#f59e0b" }}
+                          >
+                            <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handlePrintReport(report)}
+                            className="action-button print"
+                            title="Print Report"
+                          >
+                            <Printer size={16} />
+                          </button>
+                          {report.reportUrl && (
+                            <button
+                              className="action-button download"
+                              title="Download File"
+                            >
+                              <Download size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="firms-table-container">
-            <div className="table-header">
-              <h3 className="table-title">
-                <Building2 size={20} color="#059669" />
-                Firm Listing
+          {/* Partner Firms Section */}
+          <div className="content-section">
+            <div className="section-header">
+              <h3 className="section-title">
+                <Building2 size={20} color="#8b5cf6" />
+                {departmentName} Firm Listing
               </h3>
             </div>
             <div className="table-wrapper">
@@ -728,35 +841,35 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
                   </tr>
                 </thead>
                 <tbody className="table-body">
-                  {firms.map((firm, index) => {
-                    const dept = departments[index % departments.length];
-                    return (
-                      <tr key={index}>
-                        <td>{firm}</td>
-                        <td>
-                          <span className="department-badge">{dept}</span>
-                        </td>
-                        <td>
-                          <img
-                            src={getPlaceholderImage(dept)}
-                            alt={`${dept} Image`}
-                            className="firm-image"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {firms.map((firm, index) => (
+                    <tr key={index}>
+                      <td>{firm}</td>
+                      <td>
+                        <span className="department-badge">
+                          {departmentName}
+                        </span>
+                      </td>
+                      <td>
+                        <img
+                          src={getPlaceholderImage(departmentName)}
+                          alt={`${departmentName} Sample`}
+                          className="firm-image"
+                        />
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </div>
         </div>
 
+        {/* Report Detail Modal */}
         {selectedReport && (
           <div className="modal-overlay">
             <div className="modal-content">
               <div className="modal-header">
-                <h3 className="modal-title">Report Details</h3>
+                <h3 className="modal-title">{departmentName} Report Details</h3>
                 <button
                   onClick={() => setSelectedReport(null)}
                   className="modal-close"
@@ -766,6 +879,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
               </div>
 
               <div className="modal-body">
+                {/* Patient Info */}
                 <div className="patient-info-section">
                   <h4 className="info-section-title">Patient Information</h4>
                   <div className="info-grid">
@@ -796,6 +910,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
                   </div>
                 </div>
 
+                {/* Report Content */}
                 <div className="report-details-section">
                   <h4>Report Details</h4>
                   <div className="report-content">
@@ -803,6 +918,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
                   </div>
                 </div>
 
+                {/* Report Meta */}
                 <div className="report-meta">
                   <div>
                     Uploaded by:{" "}
@@ -818,6 +934,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
                   </div>
                 </div>
 
+                {/* Actions */}
                 <div className="modal-actions">
                   <button
                     onClick={() => handlePrintReport(selectedReport)}
@@ -842,4 +959,4 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
   );
 };
 
-export default ReportsListing;
+export default DepartmentView;

@@ -315,10 +315,7 @@ const ReportDetailsPopup: React.FC<ReportDetailsPopupProps> = ({ report, isOpen,
 
           <div className="popup-body">
             <div className="report-header">
-              <h1 className="hospital-name">City General Hospital</h1>
-              <p className="hospital-address">
-                123 Medical Center Drive, Healthcare City, HC 12345 | Phone: (555) 123-4567
-              </p>
+              <h1 className="hospital-name">Bhaktapur International Hospital</h1>
               <h2 className="report-title">{report.reportType}</h2>
             </div>
 
@@ -368,21 +365,6 @@ const ReportDetailsPopup: React.FC<ReportDetailsPopupProps> = ({ report, isOpen,
                   <span className="info-value">{reportDetails.referringDoctor}</span>
                 </div>
               </div>
-            </div>
-
-            <div className="report-section">
-              <h3 className="section-title">Clinical Findings</h3>
-              <div className="section-content">{reportDetails.findings}</div>
-            </div>
-
-            <div className="report-section">
-              <h3 className="section-title">Impression</h3>
-              <div className="section-content">{reportDetails.impression}</div>
-            </div>
-
-            <div className="report-section">
-              <h3 className="section-title">Recommendations</h3>
-              <div className="section-content">{reportDetails.recommendations}</div>
             </div>
 
             <div className="signature-section">

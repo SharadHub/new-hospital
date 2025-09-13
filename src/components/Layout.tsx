@@ -4,9 +4,11 @@ import {
   Users,
   FileText,
   Search,
+  Upload,
   Menu,
   X,
 } from "lucide-react";
+import Header from "./Header";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,21 +26,29 @@ const Layout: React.FC<LayoutProps> = ({
 
   const menuItems = [
     { id: "Radiology", label: "Radiology", icon: Activity },
+    { id: "patients", label: "Patient Registration", icon: Users },
     { id: "reports", label: "Reports", icon: FileText },
-    { id: "search", label: "Search & Filter", icon: Search },
+    { id: "upload", label: "Upload File", icon: Upload },
+    // { id: "search", label: "Search & Filter", icon: Search },
   ];
 
-  // Dropdown items for Radiology
-
   const handleMenuItemClick = (viewId: string) => {
-  if (["ct", "mri", "ecg", "usg", "x-ray", "tmt", "holter"].includes(viewId.toLowerCase())) {
-    onViewChange(`reports-${viewId.toLowerCase()}`);
-  } else {
-    onViewChange(viewId);
-  }
-  setIsMobileMenuOpen(false);
-  setShowRadiologyDropdown(false);
-};
+    if (["ct", "mri", "ecg", "usg", "x-ray", "tmt", "holter"].includes(viewId.toLowerCase())) {
+      onViewChange(`reports-${viewId.toLowerCase()}`);
+    } else {
+      onViewChange(viewId);
+    }
+    setIsMobileMenuOpen(false);
+    setShowRadiologyDropdown(false);
+  };
+
+  const handleMenuToggle = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  const handleSearchClick = () => {
+    handleMenuItemClick("search");
+  };
 
   const handleRadiologyHover = () => {
     setShowRadiologyDropdown(true);
@@ -190,7 +200,6 @@ const Layout: React.FC<LayoutProps> = ({
           transform: rotate(180deg);
         }
 
-        /* Dropdown Styles */
         .dropdown-menu {
           position: absolute;
           left: 100%;
@@ -268,92 +277,12 @@ const Layout: React.FC<LayoutProps> = ({
           margin-left: 0;
         }
 
-        .header {
-          background-color: white;
-          box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .header-content {
-          padding: 1rem;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .header-left {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-        }
-
-        .menu-btn {
-          padding: 0.5rem;
-          color: #9ca3af;
-          background: none;
-          border: none;
-          cursor: pointer;
-          display: block;
-        }
-
-        .menu-btn:hover {
-          color: #6b7280;
-        }
-
-        .header-title {
-          font-size: 1.25rem;
-          font-weight: bold;
-          color: #111827;
-          margin: 0;
-        }
-
-        .header-right {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .header-date {
-          font-size: 0.875rem;
-          color: #6b7280;
-          display: none;
-        }
-
-        .settings-btn {
-          padding: 0.5rem;
-          color: #9ca3af;
-          background: none;
-          border: none;
-          cursor: pointer;
-          transition: color 0.2s;
-        }
-
-        .settings-btn:hover {
-          color: #6b7280;
-        }
-
         .main-area {
           flex: 1;
           padding: 1rem;
         }
 
         @media (min-width: 640px) {
-          .header-content {
-            padding: 1rem 1.5rem;
-          }
-          
-          .header-right {
-            gap: 1rem;
-          }
-          
-          .header-date {
-            display: block;
-          }
-          
-          .header-title {
-            font-size: 1.5rem;
-          }
-          
           .main-area {
             padding: 1.5rem;
           }
@@ -374,16 +303,11 @@ const Layout: React.FC<LayoutProps> = ({
             display: none;
           }
           
-          .menu-btn {
-            display: none;
-          }
-          
           .main-content {
             margin-left: 0;
           }
         }
 
-        /* Mobile dropdown adjustments */
         @media (max-width: 1023px) {
           .dropdown-menu {
             left: 0;
@@ -414,7 +338,6 @@ const Layout: React.FC<LayoutProps> = ({
         }
       `}</style>
 
-      {/* Mobile Menu Overlay */}
       {isMobileMenuOpen && (
         <div
           className="mobile-overlay"
@@ -423,9 +346,7 @@ const Layout: React.FC<LayoutProps> = ({
         />
       )}
 
-      {/* Sidebar */}
-  <div className={`sidebar ${isMobileMenuOpen ? "open" : ""}`}>
-        {/* Mobile close button */}
+      <div className={`sidebar ${isMobileMenuOpen ? "open" : ""}`}>
         <div className="close-btn" onClick={() => setIsMobileMenuOpen(false)}>
           <X size={24} />
         </div>
@@ -466,7 +387,6 @@ const Layout: React.FC<LayoutProps> = ({
                   </div>
                 </button>
 
-                {/* Dropdown Menu for Radiology */}
                 {isRadiology && (
                   <div
                     className={`dropdown-menu ${
@@ -475,35 +395,36 @@ const Layout: React.FC<LayoutProps> = ({
                   >
                     <div className="dropdown-header">Radiology Services</div>
 
-                    {/* Main sections */}
                     <button
                       onClick={() => handleMenuItemClick("patients")}
                       className={`dropdown-item ${
-                      currentView === "patients" ? "active" : ""
+                        currentView === "patients" ? "active" : ""
                       }`}
                     >
-                    <Users size={16} />
-                    <span>Patient Registration</span>
+                      <Users size={16} />
+                      <span>Patient Registration</span>
                     </button>
 
                     <div className="dropdown-divider"></div>
 
-                    {/* Department sections */}
-                    {["CT Scan", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"].map(
-                      (dept) => (
-                        <button
-                          key={dept.toLowerCase()}
-                          onClick={() =>
-                            handleMenuItemClick(dept.toLowerCase())
-                          }
-                          className={`dropdown-item ${
-                            currentView === dept.toLowerCase() ? "active" : ""
-                          }`}
-                        >
-                          <Activity size={16} />
-                          <span>{dept}</span>
-                        </button>
-                      )
+                    {["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"].map(
+                      (dept) => {
+                        const deptId =
+                          dept === "X-ray" ? "x-ray" : dept.toLowerCase();
+
+                        return (
+                          <button
+                            key={deptId}
+                            onClick={() => handleMenuItemClick(deptId)}
+                            className={`dropdown-item ${
+                              currentView === deptId ? "active" : ""
+                            }`}
+                          >
+                            <Activity size={16} />
+                            <span>{dept}</span>
+                          </button>
+                        );
+                      }
                     )}
                   </div>
                 )}
@@ -513,22 +434,12 @@ const Layout: React.FC<LayoutProps> = ({
         </nav>
       </div>
 
-      {/* Main Content */}
       <div className="main-content">
-        <header className="header">
-          <div className="header-content">
-            <div className="header-left">
-              {/* Mobile menu button */}
-              <button
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="menu-btn"
-              >
-                <Menu size={24} />
-              </button>
-            </div>
-          </div>
-        </header>
-
+        <Header
+          onMenuToggle={handleMenuToggle}
+          onSearchClick={handleSearchClick}
+          currentDate="Saturday, September 13, 2025"
+        />
         <main className="main-area">{children}</main>
       </div>
     </div>
