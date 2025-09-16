@@ -13,6 +13,9 @@ import {
   User,
   Calendar,
   ClipboardList,
+  Image as ImageIcon,
+  X,
+  Plus,
 } from "lucide-react";
 
 interface DocumentState {
@@ -26,6 +29,15 @@ interface DocumentState {
   savedReportId?: string;
   showFormattedView: boolean;
   autoScanned: boolean;
+}
+
+interface FirmImageState {
+  files: File[];
+  images: string[];
+  loading: boolean;
+  error: string | null;
+  saved: boolean;
+  uploadProgress: number;
 }
 
 interface SavedReport {
@@ -50,7 +62,7 @@ export default function DocumentUploadSystem({
   onAddReport,
   onViewReportDetails,
 }: DocumentUploadSystemProps) {
-  // Document upload state
+  // Document upload state (unchanged)
   const [documentState, setDocumentState] = useState<DocumentState>({
     file: null,
     image: null,
@@ -63,17 +75,14 @@ export default function DocumentUploadSystem({
     autoScanned: false,
   });
 
-  // Firm data upload state
-  const [firmState, setFirmState] = useState<DocumentState>({
-    file: null,
-    image: null,
-    text: "",
-    formattedData: null,
+  // Firm images upload state (new multi-image state)
+  const [firmState, setFirmState] = useState<FirmImageState>({
+    files: [],
+    images: [],
     loading: false,
     error: null,
     saved: false,
-    showFormattedView: false,
-    autoScanned: false,
+    uploadProgress: 0,
   });
 
   // Auto-extracted form fields
@@ -185,13 +194,14 @@ export default function DocumentUploadSystem({
     /(?:study\s*date|date\s*of\s*study|exam\s*date|date\s*of\s*exam)\s*[:=\-]?\s*(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})/i,
     /(?:date\s*of\s*birth|dob)\s*[:=\-]?\s*(\d{1,2}[\/\.\-]\d{1,2}[\/\.\-]\d{2,4})/i,
   ];
+
   // Cleanup blob URLs
   useEffect(() => {
     return () => {
       if (documentState.image) URL.revokeObjectURL(documentState.image);
-      if (firmState.image) URL.revokeObjectURL(firmState.image);
+      firmState.images.forEach((imageUrl) => URL.revokeObjectURL(imageUrl));
     };
-  }, [documentState.image, firmState.image]);
+  }, [documentState.image, firmState.images]);
 
   // Enhanced smart text parsing function
   const parseExtractedText = (text: string) => {
@@ -202,7 +212,6 @@ export default function DocumentUploadSystem({
       rawText: text,
       extractedFields: {},
       observations: [],
-      //findings: [],
       recommendation: "",
       autoFilledData: {
         department: "",
@@ -458,24 +467,19 @@ export default function DocumentUploadSystem({
     return parsed;
   };
 
-  // Auto-scan immediately when file is uploaded
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    type: "document" | "firm"
-  ) => {
+  // Document file change handler (unchanged)
+  const handleDocumentFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const setState = type === "document" ? setDocumentState : setFirmState;
-      const currentState = type === "document" ? documentState : firmState;
 
       // Cleanup previous blob URL
-      if (currentState.image) {
-        URL.revokeObjectURL(currentState.image);
+      if (documentState.image) {
+        URL.revokeObjectURL(documentState.image);
       }
 
       const imageUrl = URL.createObjectURL(file);
 
-      setState({
+      setDocumentState({
         file: file,
         image: imageUrl,
         text: "",
@@ -489,21 +493,39 @@ export default function DocumentUploadSystem({
 
       // Auto-scan immediately after file upload
       setTimeout(() => {
-        performAutoScan(file, imageUrl, type);
+        performAutoScan(file, imageUrl);
       }, 100);
     }
   };
 
-  // Perform auto-scan function
-  const performAutoScan = (
-    file: File,
-    imageUrl: string,
-    type: "document" | "firm"
-  ) => {
-    const setState = type === "document" ? setDocumentState : setFirmState;
+  // New multi-image file change handler for firm data
+  const handleFirmImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files);
 
+      // Cleanup previous blob URLs
+      firmState.images.forEach((imageUrl) => URL.revokeObjectURL(imageUrl));
+
+      // Create new blob URLs for preview
+      const imageUrls = files.map((file) => URL.createObjectURL(file));
+
+      setFirmState({
+        files: files,
+        images: imageUrls,
+        loading: false,
+        error: null,
+        saved: false,
+        uploadProgress: 0,
+      });
+
+      console.log(`${files.length} images selected for firm data upload`);
+    }
+  };
+
+  // Perform auto-scan function (unchanged)
+  const performAutoScan = (file: File, imageUrl: string) => {
     Tesseract.recognize(imageUrl, "eng", {
-      logger: (m: any) => console.log(`${type} Auto-Scan:`, m),
+      logger: (m: any) => console.log("Document Auto-Scan:", m),
       tessedit_char_whitelist:
         "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,;:!?-()[]{}/ ",
     })
@@ -513,7 +535,7 @@ export default function DocumentUploadSystem({
         const formattedData = parseExtractedText(text);
 
         // Auto-fill form fields for documents
-        if (type === "document" && formattedData.autoFilledData) {
+        if (formattedData.autoFilledData) {
           if (formattedData.autoFilledData.department) {
             setDocumentDepartment(formattedData.autoFilledData.department);
           }
@@ -532,7 +554,7 @@ export default function DocumentUploadSystem({
         const processedText =
           `[${
             formattedData.autoFilledData.department || "GENERAL"
-          } ${type.toUpperCase()} AUTO-SCAN]\n` +
+          } DOCUMENT AUTO-SCAN]\n` +
           `File: ${file.name}\n` +
           `Auto-detected Department: ${
             formattedData.autoFilledData.department || "Not detected"
@@ -547,12 +569,10 @@ export default function DocumentUploadSystem({
             formattedData.autoFilledData.date || "Not detected"
           }\n` +
           `Processed: ${new Date().toLocaleString()}\n` +
-          `Type: ${
-            type === "document" ? "Medical Document" : "Firm Data"
-          }\n\n` +
+          `Type: Medical Document\n\n` +
           `EXTRACTED CONTENT:\n${text}`;
 
-        setState((prev) => ({
+        setDocumentState((prev) => ({
           ...prev,
           text: processedText,
           formattedData: formattedData,
@@ -562,10 +582,10 @@ export default function DocumentUploadSystem({
         }));
       })
       .catch((err) => {
-        console.error(`${type} Auto-Scan Error:`, err);
-        setState((prev) => ({
+        console.error("Document Auto-Scan Error:", err);
+        setDocumentState((prev) => ({
           ...prev,
-          error: `Failed to auto-scan ${type}. Please try again.`,
+          error: "Failed to auto-scan document. Please try again.",
           loading: false,
           autoScanned: false,
         }));
@@ -580,30 +600,34 @@ export default function DocumentUploadSystem({
     }
   };
 
-  const handleReScan = (type: "document" | "firm") => {
-    const currentState = type === "document" ? documentState : firmState;
-    const setState = type === "document" ? setDocumentState : setFirmState;
+  const handleReScan = () => {
+    if (!documentState.image || !documentState.file) return;
 
-    if (!currentState.image || !currentState.file) return;
-
-    setState((prev) => ({ ...prev, loading: true }));
-    performAutoScan(currentState.file, currentState.image, type);
+    setDocumentState((prev) => ({ ...prev, loading: true }));
+    performAutoScan(documentState.file, documentState.image);
   };
 
-  const handleSaveDocument = (type: "document" | "firm") => {
-    const currentState = type === "document" ? documentState : firmState;
-    const setState = type === "document" ? setDocumentState : setFirmState;
-    const department =
-      type === "document" ? documentDepartment : firmDepartment;
+  // Remove individual firm image
+  const removeFirmImage = (index: number) => {
+    const newFiles = firmState.files.filter((_, i) => i !== index);
+    const newImages = firmState.images.filter((_, i) => i !== index);
 
-    if (!currentState.file || !currentState.text) return;
+    // Cleanup the removed image URL
+    URL.revokeObjectURL(firmState.images[index]);
+
+    setFirmState((prev) => ({
+      ...prev,
+      files: newFiles,
+      images: newImages,
+    }));
+  };
+
+  const handleSaveDocument = () => {
+    if (!documentState.file || !documentState.text) return;
 
     // Validation for document type
-    if (
-      type === "document" &&
-      (!extractedPatientName || !extractedReportType || !extractedDate)
-    ) {
-      setState((prev) => ({
+    if (!extractedPatientName || !extractedReportType || !extractedDate) {
+      setDocumentState((prev) => ({
         ...prev,
         error:
           "Please ensure Patient Name, Report Type, and Date are extracted/filled",
@@ -611,50 +635,78 @@ export default function DocumentUploadSystem({
       return;
     }
 
-    if (type === "document") {
-      // Create report for document upload
-      const reportId = Date.now().toString();
+    // Create report for document upload
+    const reportId = Date.now().toString();
 
-      const newReport: SavedReport = {
-        id: reportId,
-        serialNumber: savedReports.length + 1,
-        patientName: extractedPatientName,
-        department: department,
-        reportType: extractedReportType,
-        date: extractedDate,
-        uploadedAt: new Date().toISOString(),
-        extractedText: currentState.text,
-        formattedData: currentState.formattedData,
-        imageUrl: currentState.image || undefined,
-      };
+    const newReport: SavedReport = {
+      id: reportId,
+      serialNumber: savedReports.length + 1,
+      patientName: extractedPatientName,
+      department: documentDepartment,
+      reportType: extractedReportType,
+      date: extractedDate,
+      uploadedAt: new Date().toISOString(),
+      extractedText: documentState.text,
+      formattedData: documentState.formattedData,
+      imageUrl: documentState.image || undefined,
+    };
 
-      // Add to saved reports
-      setSavedReports((prev) => [...prev, newReport]);
+    // Add to saved reports
+    setSavedReports((prev) => [...prev, newReport]);
 
-      // Call parent callback if provided
-      if (onAddReport) {
-        onAddReport(newReport);
-      }
-
-      setState((prev) => ({
-        ...prev,
-        saved: true,
-        savedReportId: reportId,
-        error: null,
-      }));
-
-      console.log("Document saved and ready for view details:", newReport);
-    } else {
-      // Handle firm data save
-      setState((prev) => ({ ...prev, saved: true, error: null }));
-      console.log(`Saving ${type} to ${department} department:`, {
-        file: currentState.file,
-        extractedText: currentState.text,
-        formattedData: currentState.formattedData,
-        department: department,
-        timestamp: new Date().toISOString(),
-      });
+    // Call parent callback if provided
+    if (onAddReport) {
+      onAddReport(newReport);
     }
+
+    setDocumentState((prev) => ({
+      ...prev,
+      saved: true,
+      savedReportId: reportId,
+      error: null,
+    }));
+
+    console.log("Document saved and ready for view details:", newReport);
+  };
+
+  // Save firm images
+  const handleSaveFirmImages = () => {
+    if (firmState.files.length === 0) {
+      setFirmState((prev) => ({
+        ...prev,
+        error: "Please select at least one image to upload.",
+      }));
+      return;
+    }
+
+    setFirmState((prev) => ({ ...prev, loading: true, uploadProgress: 0 }));
+
+    // Simulate upload progress
+    const progressInterval = setInterval(() => {
+      setFirmState((prev) => {
+        const newProgress = prev.uploadProgress + 20;
+        if (newProgress >= 100) {
+          clearInterval(progressInterval);
+          return {
+            ...prev,
+            loading: false,
+            saved: true,
+            error: null,
+            uploadProgress: 100,
+          };
+        }
+        return { ...prev, uploadProgress: newProgress };
+      });
+    }, 200);
+
+    console.log(
+      `Saving ${firmState.files.length} images to ${firmDepartment} department:`,
+      {
+        files: firmState.files.map((f) => f.name),
+        department: firmDepartment,
+        timestamp: new Date().toISOString(),
+      }
+    );
   };
 
   const handleViewDetails = () => {
@@ -668,14 +720,8 @@ export default function DocumentUploadSystem({
     }
   };
 
-  // Formatted Text Display Component
-  const FormattedTextDisplay = ({
-    formattedData,
-    type,
-  }: {
-    formattedData: any;
-    type: "document" | "firm";
-  }) => {
+  // Formatted Text Display Component (unchanged)
+  const FormattedTextDisplay = ({ formattedData }: { formattedData: any }) => {
     if (!formattedData) return null;
 
     return (
@@ -752,593 +798,6 @@ export default function DocumentUploadSystem({
     );
   };
 
-  const UploadBlock = ({
-    title,
-    description,
-    type,
-    state,
-    department,
-    setDepartment,
-    icon: Icon,
-    color,
-  }: {
-    title: string;
-    description: string;
-    type: "document" | "firm";
-    state: DocumentState;
-    department: string;
-    setDepartment: (dept: string) => void;
-    icon: any;
-    color: string;
-  }) => {
-    const setState = type === "document" ? setDocumentState : setFirmState;
-
-    return (
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px",
-          padding: "24px",
-          border: `2px solid ${color}`,
-          flex: "1",
-          minWidth: "450px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            marginBottom: "20px",
-          }}
-        >
-          <Icon size={24} style={{ color }} />
-          <div>
-            <h2
-              style={{
-                fontSize: "20px",
-                fontWeight: "600",
-                color: "#1f2937",
-                margin: "0",
-              }}
-            >
-              {title}
-            </h2>
-            <p
-              style={{
-                fontSize: "14px",
-                color: "#6b7280",
-                margin: "4px 0 0 0",
-              }}
-            >
-              {description}
-            </p>
-          </div>
-        </div>
-
-        {/* File Upload Area */}
-        <div
-          style={{
-            border: `2px dashed ${color}`,
-            borderRadius: "8px",
-            padding: "24px",
-            textAlign: "center",
-            cursor: state.loading ? "not-allowed" : "pointer",
-            backgroundColor: state.loading ? `${color}05` : `${color}08`,
-            transition: "background-color 0.3s ease",
-            opacity: state.loading ? 0.7 : 1,
-          }}
-          onClick={() => !state.loading && handleUploadClick(type)}
-          onMouseOver={(e) => {
-            if (!state.loading) {
-              e.currentTarget.style.backgroundColor = `${color}15`;
-            }
-          }}
-          onMouseOut={(e) => {
-            if (!state.loading) {
-              e.currentTarget.style.backgroundColor = `${color}08`;
-            }
-          }}
-        >
-          <input
-            type="file"
-            accept={
-              type === "document"
-                ? "image/*,application/pdf,.doc,.docx,.txt"
-                : "image/*"
-            }
-            onChange={(e) => handleFileChange(e, type)}
-            ref={type === "document" ? documentFileInputRef : firmFileInputRef}
-            style={{ display: "none" }}
-            disabled={state.loading}
-          />
-
-          {state.loading ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: "12px",
-              }}
-            >
-              <Loader2 className="animate-spin" size={32} style={{ color }} />
-              <p
-                style={{
-                  margin: "0",
-                  fontSize: "16px",
-                  color: "#374151",
-                  fontWeight: "500",
-                }}
-              >
-                Auto-scanning document...
-              </p>
-              <p style={{ margin: "0", fontSize: "12px", color: "#6b7280" }}>
-                Extracting patient name, report type, department, and date
-              </p>
-            </div>
-          ) : (
-            <>
-              <Upload size={32} style={{ margin: "0 auto", color }} />
-              <p
-                style={{ marginTop: "8px", fontSize: "14px", color: "#374151" }}
-              >
-                Click to upload and auto-extract{" "}
-                {type === "document" ? "patient & report details" : "firm data"}
-              </p>
-              <p style={{ fontSize: "12px", color: "#6b7280" }}>
-                {type === "document"
-                  ? "PDF, DOC, DOCX, TXT, PNG, JPG, JPEG - Auto-extracts patient name, report type, department & date"
-                  : "PNG, JPG, JPEG"}
-              </p>
-            </>
-          )}
-        </div>
-
-        {/* File Info */}
-        {state.file && (
-          <div
-            style={{
-              marginTop: "16px",
-              padding: "12px",
-              backgroundColor: "#f9fafb",
-              borderRadius: "6px",
-              border: "1px solid #e5e7eb",
-            }}
-          >
-            <p style={{ margin: "0", fontSize: "14px", color: "#374151" }}>
-              <strong>File:</strong> {state.file.name}
-            </p>
-            <p
-              style={{
-                margin: "4px 0 0 0",
-                fontSize: "12px",
-                color: "#6b7280",
-              }}
-            >
-              Size: {(state.file.size / 1024).toFixed(1)} KB
-            </p>
-            {state.autoScanned && (
-              <div
-                style={{
-                  marginTop: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  color: "#059669",
-                  fontSize: "12px",
-                  fontWeight: "500",
-                }}
-              >
-                <CheckCircle2 size={14} />
-                Auto-scan completed - Data extracted
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Image Preview */}
-        {state.image && (
-          <div style={{ marginTop: "16px" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "8px",
-              }}
-            >
-              <h3
-                style={{
-                  fontSize: "16px",
-                  fontWeight: "500",
-                  margin: "0",
-                  color: "#374151",
-                }}
-              >
-                Preview:
-              </h3>
-              {state.autoScanned && !state.loading && (
-                <button
-                  onClick={() => handleReScan(type)}
-                  style={{
-                    backgroundColor: "#f3f4f6",
-                    color: "#374151",
-                    padding: "6px 10px",
-                    borderRadius: "4px",
-                    fontSize: "12px",
-                    fontWeight: "500",
-                    border: "1px solid #d1d5db",
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    transition: "all 0.2s ease",
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = "#e5e7eb";
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = "#f3f4f6";
-                  }}
-                >
-                  <RefreshCw size={12} />
-                  Re-scan
-                </button>
-              )}
-            </div>
-            <img
-              src={state.image}
-              alt="Preview"
-              style={{
-                width: "100%",
-                maxHeight: "200px",
-                objectFit: "contain",
-                borderRadius: "8px",
-                border: "1px solid #e5e7eb",
-              }}
-            />
-          </div>
-        )}
-
-        {/* Auto-extracted Department */}
-        {state.autoScanned && (
-          <div style={{ marginTop: "16px" }}>
-            <label
-              style={{
-                display: "block",
-                fontSize: "14px",
-                fontWeight: "500",
-                color: "#374151",
-                marginBottom: "8px",
-              }}
-            >
-              Department: <span style={{ color: "#ef4444" }}>*</span>
-              {department && (
-                <span
-                  style={{
-                    marginLeft: "8px",
-                    fontSize: "12px",
-                    color: "#059669",
-                    backgroundColor: "#ecfdf5",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    fontWeight: "600",
-                  }}
-                >
-                  Auto-detected
-                </span>
-              )}
-            </label>
-            <select
-              value={department}
-              onChange={(e) => setDepartment(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "10px 12px",
-                border: department ? "2px solid #10b981" : "1px solid #d1d5db",
-                borderRadius: "6px",
-                fontSize: "14px",
-                backgroundColor: department ? "#ecfdf5" : "white",
-              }}
-            >
-              <option value="">Select Department</option>
-              {departments.map((dept) => (
-                <option key={dept} value={dept}>
-                  {dept}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        {/* Document-specific auto-extracted fields */}
-        {type === "document" && state.autoScanned && (
-          <div style={{ marginTop: "16px" }}>
-            {/* Patient Name Field */}
-            <div style={{ marginBottom: "12px" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "#374151",
-                  marginBottom: "8px",
-                }}
-              >
-                Patient Name: <span style={{ color: "#ef4444" }}>*</span>
-                {extractedPatientName && (
-                  <span
-                    style={{
-                      marginLeft: "8px",
-                      fontSize: "12px",
-                      color: "#059669",
-                      backgroundColor: "#ecfdf5",
-                      padding: "2px 6px",
-                      borderRadius: "4px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Auto-extracted
-                  </span>
-                )}
-              </label>
-              <input
-                type="text"
-                value={extractedPatientName}
-                onChange={(e) => setExtractedPatientName(e.target.value)}
-                placeholder="Patient name will be auto-extracted from document"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: extractedPatientName
-                    ? "2px solid #10b981"
-                    : "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  backgroundColor: extractedPatientName ? "#ecfdf5" : "white",
-                }}
-              />
-            </div>
-
-            {/* Report Type Field */}
-            <div style={{ marginBottom: "12px" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "#374151",
-                  marginBottom: "8px",
-                }}
-              >
-                Report Type: <span style={{ color: "#ef4444" }}>*</span>
-                {extractedReportType && (
-                  <span
-                    style={{
-                      marginLeft: "8px",
-                      fontSize: "12px",
-                      color: "#059669",
-                      backgroundColor: "#ecfdf5",
-                      padding: "2px 6px",
-                      borderRadius: "4px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Auto-extracted
-                  </span>
-                )}
-              </label>
-              <input
-                type="text"
-                value={extractedReportType}
-                onChange={(e) => setExtractedReportType(e.target.value)}
-                placeholder="Report type will be auto-extracted (e.g., USG of Pelvis, X-ray of Hand)"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: extractedReportType
-                    ? "2px solid #10b981"
-                    : "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  backgroundColor: extractedReportType ? "#ecfdf5" : "white",
-                }}
-              />
-            </div>
-
-            {/* Date Field */}
-            <div style={{ marginBottom: "16px" }}>
-              <label
-                style={{
-                  display: "block",
-                  fontSize: "14px",
-                  fontWeight: "500",
-                  color: "#374151",
-                  marginBottom: "8px",
-                }}
-              >
-                Report Date: <span style={{ color: "#ef4444" }}>*</span>
-                {extractedDate && (
-                  <span
-                    style={{
-                      marginLeft: "8px",
-                      fontSize: "12px",
-                      color: "#059669",
-                      backgroundColor: "#ecfdf5",
-                      padding: "2px 6px",
-                      borderRadius: "4px",
-                      fontWeight: "600",
-                    }}
-                  >
-                    Auto-extracted
-                  </span>
-                )}
-              </label>
-              <input
-                type="date"
-                value={extractedDate}
-                onChange={(e) => setExtractedDate(e.target.value)}
-                placeholder="Report date will be auto-extracted from document"
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: extractedDate
-                    ? "2px solid #10b981"
-                    : "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                  backgroundColor: extractedDate ? "#ecfdf5" : "white",
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Formatted Text Display */}
-        {state.formattedData && state.showFormattedView && (
-          <FormattedTextDisplay
-            formattedData={state.formattedData}
-            type={type}
-          />
-        )}
-
-        {/* Save Document Button */}
-        {state.text && !state.saved && (
-          <button
-            onClick={() => handleSaveDocument(type)}
-            disabled={
-              type === "document" &&
-              (!extractedPatientName || !extractedReportType || !extractedDate)
-            }
-            style={{
-              width: "100%",
-              marginTop: "12px",
-              backgroundColor:
-                type === "document" &&
-                (!extractedPatientName ||
-                  !extractedReportType ||
-                  !extractedDate)
-                  ? "#9ca3af"
-                  : "#059669",
-              color: "white",
-              padding: "12px 16px",
-              borderRadius: "6px",
-              fontWeight: "500",
-              fontSize: "14px",
-              border: "none",
-              cursor:
-                type === "document" &&
-                (!extractedPatientName ||
-                  !extractedReportType ||
-                  !extractedDate)
-                  ? "not-allowed"
-                  : "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              transition: "background-color 0.3s ease",
-              opacity:
-                type === "document" &&
-                (!extractedPatientName ||
-                  !extractedReportType ||
-                  !extractedDate)
-                  ? 0.6
-                  : 1,
-            }}
-          >
-            <Save size={16} />
-            Save {type === "document" ? "Document" : "Firm Data"}
-            {type === "document" &&
-              (!extractedPatientName ||
-                !extractedReportType ||
-                !extractedDate) && (
-                <span style={{ fontSize: "12px", marginLeft: "4px" }}>
-                  (Fill required fields)
-                </span>
-              )}
-          </button>
-        )}
-
-        {/* View Details Button (only for documents) */}
-        {type === "document" && state.saved && state.savedReportId && (
-          <button
-            onClick={handleViewDetails}
-            style={{
-              width: "100%",
-              marginTop: "12px",
-              backgroundColor: "#3b82f6",
-              color: "white",
-              padding: "12px 16px",
-              borderRadius: "6px",
-              fontWeight: "500",
-              fontSize: "14px",
-              border: "none",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              transition: "background-color 0.3s ease",
-            }}
-          >
-            <Eye size={16} />
-            View Details
-          </button>
-        )}
-
-        {/* Error Display */}
-        {state.error && (
-          <div
-            style={{
-              marginTop: "16px",
-              padding: "12px",
-              backgroundColor: "#fef2f2",
-              border: "1px solid #fecaca",
-              borderRadius: "6px",
-              color: "#b91c1c",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "14px",
-            }}
-          >
-            <XCircle size={16} /> {state.error}
-          </div>
-        )}
-
-        {/* Success/Saved State */}
-        {state.saved && (
-          <div
-            style={{
-              marginTop: "16px",
-              display: "flex",
-              alignItems: "center",
-              color: "#065f46",
-              backgroundColor: "#ecfdf5",
-              border: "1px solid #a7f3d0",
-              padding: "12px",
-              borderRadius: "6px",
-              gap: "8px",
-              fontSize: "14px",
-            }}
-          >
-            <CheckCircle2 size={16} />
-            {type === "document" ? "Document" : "Firm data"} saved successfully
-            to {department} department!
-            {type === "document" && (
-              <>
-                <br />
-                <small>Click "View Details" to see the saved report.</small>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div
       style={{
@@ -1354,6 +813,53 @@ export default function DocumentUploadSystem({
         }
         .animate-spin {
           animation: spin 1s linear infinite;
+        }
+        .image-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+          gap: 12px;
+          margin-top: 16px;
+        }
+        .image-preview {
+          position: relative;
+          border-radius: 8px;
+          overflow: hidden;
+          border: 2px solid #e5e7eb;
+          aspect-ratio: 1;
+        }
+        .image-preview img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .remove-image {
+          position: absolute;
+          top: 4px;
+          right: 4px;
+          background: rgba(239, 68, 68, 0.9);
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          font-size: 12px;
+        }
+        .upload-progress {
+          width: 100%;
+          height: 8px;
+          background-color: #e5e7eb;
+          border-radius: 4px;
+          overflow: hidden;
+          margin: 12px 0;
+        }
+        .upload-progress-bar {
+          height: 100%;
+          background-color: #10b981;
+          transition: width 0.3s ease;
         }
       `}</style>
 
@@ -1372,7 +878,7 @@ export default function DocumentUploadSystem({
             color: "#1f2937",
           }}
         >
-          Smart Document Upload & Auto-Extract System
+          Smart Document Upload & Multi-Image Upload System
         </h1>
         <div
           style={{
@@ -1382,38 +888,970 @@ export default function DocumentUploadSystem({
             justifyContent: "center",
           }}
         >
-          <UploadBlock
-            title="Upload Medical Document"
-            description="Auto-extract patient name, report type, department, and date"
-            type="document"
-            state={documentState}
-            department={documentDepartment}
-            setDepartment={setDocumentDepartment}
-            icon={FileText}
-            color="#2563eb"
-          />
+          {/* Upload Medical Document Block (unchanged) */}
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "24px",
+              border: "2px solid #2563eb",
+              flex: "1",
+              minWidth: "450px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "20px",
+              }}
+            >
+              <FileText size={24} style={{ color: "#2563eb" }} />
+              <div>
+                <h2
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: "600",
+                    color: "#1f2937",
+                    margin: "0",
+                  }}
+                >
+                  Upload Medical Document
+                </h2>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "#6b7280",
+                    margin: "4px 0 0 0",
+                  }}
+                >
+                  Auto-extract patient name, report type, department, and date
+                </p>
+              </div>
+            </div>
 
-          <UploadBlock
-            title="Upload Firm Data"
-            description="Auto-scan firm data and save to department"
-            type="firm"
-            state={firmState}
-            department={firmDepartment}
-            setDepartment={setFirmDepartment}
-            icon={Building2}
-            color="#7c3aed"
-          />
+            {/* File Upload Area */}
+            <div
+              style={{
+                border: "2px dashed #2563eb",
+                borderRadius: "8px",
+                padding: "24px",
+                textAlign: "center",
+                cursor: documentState.loading ? "not-allowed" : "pointer",
+                backgroundColor: documentState.loading
+                  ? "#2563eb05"
+                  : "#2563eb08",
+                transition: "background-color 0.3s ease",
+                opacity: documentState.loading ? 0.7 : 1,
+              }}
+              onClick={() =>
+                !documentState.loading && handleUploadClick("document")
+              }
+              onMouseOver={(e) => {
+                if (!documentState.loading) {
+                  e.currentTarget.style.backgroundColor = "#2563eb15";
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!documentState.loading) {
+                  e.currentTarget.style.backgroundColor = "#2563eb08";
+                }
+              }}
+            >
+              <input
+                type="file"
+                accept="image/*,application/pdf,.doc,.docx,.txt"
+                onChange={handleDocumentFileChange}
+                ref={documentFileInputRef}
+                style={{ display: "none" }}
+                disabled={documentState.loading}
+              />
+
+              {documentState.loading ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <Loader2
+                    className="animate-spin"
+                    size={32}
+                    style={{ color: "#2563eb" }}
+                  />
+                  <p
+                    style={{
+                      margin: "0",
+                      fontSize: "16px",
+                      color: "#374151",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Auto-scanning document...
+                  </p>
+                  <p
+                    style={{ margin: "0", fontSize: "12px", color: "#6b7280" }}
+                  >
+                    Extracting patient name, report type, department, and date
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <Upload
+                    size={32}
+                    style={{ margin: "0 auto", color: "#2563eb" }}
+                  />
+                  <p
+                    style={{
+                      marginTop: "8px",
+                      fontSize: "14px",
+                      color: "#374151",
+                    }}
+                  >
+                    Click to upload and auto-extract patient & report details
+                  </p>
+                  <p style={{ fontSize: "12px", color: "#6b7280" }}>
+                    PDF, DOC, DOCX, TXT, PNG, JPG, JPEG - Auto-extracts patient
+                    name, report type, department & date
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* File Info */}
+            {documentState.file && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "12px",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: "6px",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <p style={{ margin: "0", fontSize: "14px", color: "#374151" }}>
+                  <strong>File:</strong> {documentState.file.name}
+                </p>
+                <p
+                  style={{
+                    margin: "4px 0 0 0",
+                    fontSize: "12px",
+                    color: "#6b7280",
+                  }}
+                >
+                  Size: {(documentState.file.size / 1024).toFixed(1)} KB
+                </p>
+                {documentState.autoScanned && (
+                  <div
+                    style={{
+                      marginTop: "8px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      color: "#059669",
+                      fontSize: "12px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    <CheckCircle2 size={14} />
+                    Auto-scan completed - Data extracted
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Image Preview */}
+            {documentState.image && (
+              <div style={{ marginTop: "16px" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: "8px",
+                  }}
+                >
+                  <h3
+                    style={{
+                      fontSize: "16px",
+                      fontWeight: "500",
+                      margin: "0",
+                      color: "#374151",
+                    }}
+                  >
+                    Preview:
+                  </h3>
+                  {documentState.autoScanned && !documentState.loading && (
+                    <button
+                      onClick={handleReScan}
+                      style={{
+                        backgroundColor: "#f3f4f6",
+                        color: "#374151",
+                        padding: "6px 10px",
+                        borderRadius: "4px",
+                        fontSize: "12px",
+                        fontWeight: "500",
+                        border: "1px solid #d1d5db",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = "#e5e7eb";
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = "#f3f4f6";
+                      }}
+                    >
+                      <RefreshCw size={12} />
+                      Re-scan
+                    </button>
+                  )}
+                </div>
+                <img
+                  src={documentState.image}
+                  alt="Preview"
+                  style={{
+                    width: "100%",
+                    maxHeight: "200px",
+                    objectFit: "contain",
+                    borderRadius: "8px",
+                    border: "1px solid #e5e7eb",
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Auto-extracted Department */}
+            {documentState.autoScanned && (
+              <div style={{ marginTop: "16px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#374151",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Department: <span style={{ color: "#ef4444" }}>*</span>
+                  {documentDepartment && (
+                    <span
+                      style={{
+                        marginLeft: "8px",
+                        fontSize: "12px",
+                        color: "#059669",
+                        backgroundColor: "#ecfdf5",
+                        padding: "2px 6px",
+                        borderRadius: "4px",
+                        fontWeight: "600",
+                      }}
+                    >
+                      Auto-detected
+                    </span>
+                  )}
+                </label>
+                <select
+                  value={documentDepartment}
+                  onChange={(e) => setDocumentDepartment(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: documentDepartment
+                      ? "2px solid #10b981"
+                      : "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    backgroundColor: documentDepartment ? "#ecfdf5" : "white",
+                  }}
+                >
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Document-specific auto-extracted fields */}
+            {documentState.autoScanned && (
+              <div style={{ marginTop: "16px" }}>
+                {/* Patient Name Field */}
+                <div style={{ marginBottom: "12px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    Patient Name: <span style={{ color: "#ef4444" }}>*</span>
+                    {extractedPatientName && (
+                      <span
+                        style={{
+                          marginLeft: "8px",
+                          fontSize: "12px",
+                          color: "#059669",
+                          backgroundColor: "#ecfdf5",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Auto-extracted
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    value={extractedPatientName}
+                    onChange={(e) => setExtractedPatientName(e.target.value)}
+                    placeholder="Patient name will be auto-extracted from document"
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: extractedPatientName
+                        ? "2px solid #10b981"
+                        : "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      backgroundColor: extractedPatientName
+                        ? "#ecfdf5"
+                        : "white",
+                    }}
+                  />
+                </div>
+
+                {/* Report Type Field */}
+                <div style={{ marginBottom: "12px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    Report Type: <span style={{ color: "#ef4444" }}>*</span>
+                    {extractedReportType && (
+                      <span
+                        style={{
+                          marginLeft: "8px",
+                          fontSize: "12px",
+                          color: "#059669",
+                          backgroundColor: "#ecfdf5",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Auto-extracted
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="text"
+                    value={extractedReportType}
+                    onChange={(e) => setExtractedReportType(e.target.value)}
+                    placeholder="Report type will be auto-extracted (e.g., USG of Pelvis, X-ray of Hand)"
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: extractedReportType
+                        ? "2px solid #10b981"
+                        : "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      backgroundColor: extractedReportType
+                        ? "#ecfdf5"
+                        : "white",
+                    }}
+                  />
+                </div>
+
+                {/* Date Field */}
+                <div style={{ marginBottom: "16px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      color: "#374151",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    Report Date: <span style={{ color: "#ef4444" }}>*</span>
+                    {extractedDate && (
+                      <span
+                        style={{
+                          marginLeft: "8px",
+                          fontSize: "12px",
+                          color: "#059669",
+                          backgroundColor: "#ecfdf5",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Auto-extracted
+                      </span>
+                    )}
+                  </label>
+                  <input
+                    type="date"
+                    value={extractedDate}
+                    onChange={(e) => setExtractedDate(e.target.value)}
+                    placeholder="Report date will be auto-extracted from document"
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px",
+                      border: extractedDate
+                        ? "2px solid #10b981"
+                        : "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "14px",
+                      backgroundColor: extractedDate ? "#ecfdf5" : "white",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Formatted Text Display */}
+            {documentState.formattedData && documentState.showFormattedView && (
+              <FormattedTextDisplay
+                formattedData={documentState.formattedData}
+              />
+            )}
+
+            {/* Save Document Button */}
+            {documentState.text && !documentState.saved && (
+              <button
+                onClick={handleSaveDocument}
+                disabled={
+                  !extractedPatientName ||
+                  !extractedReportType ||
+                  !extractedDate
+                }
+                style={{
+                  width: "100%",
+                  marginTop: "12px",
+                  backgroundColor:
+                    !extractedPatientName ||
+                    !extractedReportType ||
+                    !extractedDate
+                      ? "#9ca3af"
+                      : "#059669",
+                  color: "white",
+                  padding: "12px 16px",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  border: "none",
+                  cursor:
+                    !extractedPatientName ||
+                    !extractedReportType ||
+                    !extractedDate
+                      ? "not-allowed"
+                      : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  transition: "background-color 0.3s ease",
+                  opacity:
+                    !extractedPatientName ||
+                    !extractedReportType ||
+                    !extractedDate
+                      ? 0.6
+                      : 1,
+                }}
+              >
+                <Save size={16} />
+                Save Document
+                {(!extractedPatientName ||
+                  !extractedReportType ||
+                  !extractedDate) && (
+                  <span style={{ fontSize: "12px", marginLeft: "4px" }}>
+                    (Fill required fields)
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* View Details Button */}
+            {documentState.saved && documentState.savedReportId && (
+              <button
+                onClick={handleViewDetails}
+                style={{
+                  width: "100%",
+                  marginTop: "12px",
+                  backgroundColor: "#3b82f6",
+                  color: "white",
+                  padding: "12px 16px",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  transition: "background-color 0.3s ease",
+                }}
+              >
+                <Eye size={16} />
+                View Details
+              </button>
+            )}
+
+            {/* Error Display */}
+            {documentState.error && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "12px",
+                  backgroundColor: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  borderRadius: "6px",
+                  color: "#b91c1c",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "14px",
+                }}
+              >
+                <XCircle size={16} /> {documentState.error}
+              </div>
+            )}
+
+            {/* Success/Saved State */}
+            {documentState.saved && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  color: "#065f46",
+                  backgroundColor: "#ecfdf5",
+                  border: "1px solid #a7f3d0",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  gap: "8px",
+                  fontSize: "14px",
+                }}
+              >
+                <CheckCircle2 size={16} />
+                Document saved successfully to {documentDepartment} department!
+                <br />
+                <small>Click "View Details" to see the saved report.</small>
+              </div>
+            )}
+          </div>
+
+          {/* Upload Firm Images Block (completely new) */}
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "12px",
+              padding: "24px",
+              border: "2px solid #7c3aed",
+              flex: "1",
+              minWidth: "450px",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "20px",
+              }}
+            >
+              <Building2 size={24} style={{ color: "#7c3aed" }} />
+              <div>
+                <h2
+                  style={{
+                    fontSize: "20px",
+                    fontWeight: "600",
+                    color: "#1f2937",
+                    margin: "0",
+                  }}
+                >
+                  Upload Firm Images
+                </h2>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "#6b7280",
+                    margin: "4px 0 0 0",
+                  }}
+                >
+                  Upload multiple images (at least 5 at a time)
+                </p>
+              </div>
+            </div>
+
+            {/* Multi-Image Upload Area */}
+            <div
+              style={{
+                border: "2px dashed #7c3aed",
+                borderRadius: "8px",
+                padding: "24px",
+                textAlign: "center",
+                cursor: firmState.loading ? "not-allowed" : "pointer",
+                backgroundColor: firmState.loading ? "#7c3aed05" : "#7c3aed08",
+                transition: "background-color 0.3s ease",
+                opacity: firmState.loading ? 0.7 : 1,
+              }}
+              onClick={() => !firmState.loading && handleUploadClick("firm")}
+              onMouseOver={(e) => {
+                if (!firmState.loading) {
+                  e.currentTarget.style.backgroundColor = "#7c3aed15";
+                }
+              }}
+              onMouseOut={(e) => {
+                if (!firmState.loading) {
+                  e.currentTarget.style.backgroundColor = "#7c3aed08";
+                }
+              }}
+            >
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFirmImagesChange}
+                ref={firmFileInputRef}
+                style={{ display: "none" }}
+                disabled={firmState.loading}
+              />
+
+              {firmState.loading ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}
+                >
+                  <Loader2
+                    className="animate-spin"
+                    size={32}
+                    style={{ color: "#7c3aed" }}
+                  />
+                  <p
+                    style={{
+                      margin: "0",
+                      fontSize: "16px",
+                      color: "#374151",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Uploading images...
+                  </p>
+                  <div className="upload-progress">
+                    <div
+                      className="upload-progress-bar"
+                      style={{ width: `${firmState.uploadProgress}%` }}
+                    ></div>
+                  </div>
+                  <p
+                    style={{ margin: "0", fontSize: "12px", color: "#6b7280" }}
+                  >
+                    {firmState.uploadProgress}% complete
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                    }}
+                  >
+                    <ImageIcon size={32} style={{ color: "#7c3aed" }} />
+                    <Plus size={20} style={{ color: "#7c3aed" }} />
+                  </div>
+                  <p
+                    style={{
+                      marginTop: "8px",
+                      fontSize: "14px",
+                      color: "#374151",
+                    }}
+                  >
+                    Click to upload multiple images
+                  </p>
+                  <p style={{ fontSize: "12px", color: "#6b7280" }}>
+                    PNG, JPG, JPEG
+                  </p>
+                </>
+              )}
+            </div>
+
+            {/* Images Info */}
+            {firmState.files.length > 0 && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "12px",
+                  backgroundColor: "#f9fafb",
+                  borderRadius: "6px",
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <p style={{ margin: "0", fontSize: "14px", color: "#374151" }}>
+                  <strong>Selected Images:</strong> {firmState.files.length}
+                </p>
+                <p
+                  style={{
+                    margin: "4px 0 0 0",
+                    fontSize: "12px",
+                    color: "#6b7280",
+                  }}
+                >
+                  Total Size:{" "}
+                  {(
+                    firmState.files.reduce(
+                      (total, file) => total + file.size,
+                      0
+                    ) / 1024
+                  ).toFixed(1)}{" "}
+                  KB
+                </p>
+                <div
+                  style={{
+                    marginTop: "8px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    color: firmState.files.length >= 5 ? "#059669" : "#d97706",
+                    fontSize: "12px",
+                    fontWeight: "500",
+                  }}
+                >
+                  {firmState.files.length >= 5 ? (
+                    <>
+                      <CheckCircle2 size={14} />
+                      Ready to upload - {firmState.files.length} images selected
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={14} />
+                      Need at least 5 images - {firmState.files.length} selected
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Image Previews Grid */}
+            {firmState.images.length > 0 && (
+              <div style={{ marginTop: "16px" }}>
+                <h3
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: "500",
+                    margin: "0 0 12px 0",
+                    color: "#374151",
+                  }}
+                >
+                  Preview ({firmState.images.length} images):
+                </h3>
+                <div className="image-grid">
+                  {firmState.images.map((imageUrl, index) => (
+                    <div key={index} className="image-preview">
+                      <img src={imageUrl} alt={`Preview ${index + 1}`} />
+                      <button
+                        className="remove-image"
+                        onClick={() => removeFirmImage(index)}
+                        title="Remove image"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Department Selection */}
+            {firmState.files.length > 0 && (
+              <div style={{ marginTop: "16px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "14px",
+                    fontWeight: "500",
+                    color: "#374151",
+                    marginBottom: "8px",
+                  }}
+                >
+                  Department: <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <select
+                  value={firmDepartment}
+                  onChange={(e) => setFirmDepartment(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    backgroundColor: "white",
+                  }}
+                >
+                  {departments.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Save Images Button */}
+            {firmState.files.length > 0 && !firmState.saved && (
+              <button
+                onClick={handleSaveFirmImages}
+                disabled={firmState.files.length < 5}
+                style={{
+                  width: "100%",
+                  marginTop: "12px",
+                  backgroundColor:
+                    firmState.files.length < 5 ? "#9ca3af" : "#7c3aed",
+                  color: "white",
+                  padding: "12px 16px",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  fontSize: "14px",
+                  border: "none",
+                  cursor:
+                    firmState.files.length < 5 ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  transition: "background-color 0.3s ease",
+                  opacity: firmState.files.length < 5 ? 0.6 : 1,
+                }}
+              >
+                <Save size={16} />
+                Upload {firmState.files.length} Images
+                {firmState.files.length < 5 && (
+                  <span style={{ fontSize: "12px", marginLeft: "4px" }}>
+                    (Need at least 5)
+                  </span>
+                )}
+              </button>
+            )}
+
+            {/* Error Display */}
+            {firmState.error && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  padding: "12px",
+                  backgroundColor: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  borderRadius: "6px",
+                  color: "#b91c1c",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "14px",
+                }}
+              >
+                <XCircle size={16} /> {firmState.error}
+              </div>
+            )}
+
+            {/* Success/Saved State */}
+            {firmState.saved && (
+              <div
+                style={{
+                  marginTop: "16px",
+                  display: "flex",
+                  alignItems: "center",
+                  color: "#065f46",
+                  backgroundColor: "#ecfdf5",
+                  border: "1px solid #a7f3d0",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  gap: "8px",
+                  fontSize: "14px",
+                }}
+              >
+                <CheckCircle2 size={16} />
+                {firmState.files.length} images uploaded successfully to{" "}
+                {firmDepartment} department!
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Saved Reports Preview Table */}
         {savedReports.length > 0 && (
-          <div>
+          <div style={{ marginTop: "32px" }}>
+            <h2
+              style={{
+                fontSize: "24px",
+                fontWeight: "600",
+                color: "#1f2937",
+                marginBottom: "16px",
+                textAlign: "center",
+              }}
+            >
+              Saved Medical Reports
+            </h2>
             <div style={{ overflowX: "auto" }}>
-              <table>
+              <table
+                style={{
+                  width: "100%",
+                  backgroundColor: "white",
+                  borderRadius: "8px",
+                  overflow: "hidden",
+                  boxShadow:
+                    "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
+                }}
+              >
                 <thead>
                   <tr style={{ backgroundColor: "#f9fafb" }}>
-                    <th>S.No.</th>
-                    <th>Patient Name</th>
+                    <th
+                      style={{
+                        padding: "12px 16px",
+                        textAlign: "left",
+                        fontWeight: "600",
+                        color: "#374151",
+                        borderBottom: "1px solid #e5e7eb",
+                      }}
+                    >
+                      S.No.
+                    </th>
+                    <th
+                      style={{
+                        padding: "12px 16px",
+                        textAlign: "left",
+                        fontWeight: "600",
+                        color: "#374151",
+                        borderBottom: "1px solid #e5e7eb",
+                      }}
+                    >
+                      Patient Name
+                    </th>
                     <th
                       style={{
                         padding: "12px 16px",

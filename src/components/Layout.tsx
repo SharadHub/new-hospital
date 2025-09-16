@@ -54,7 +54,9 @@ const Layout: React.FC<LayoutProps> = ({
     const normalizedViewId = viewId.toLowerCase().replace(/[\s-]/g, "");
 
     if (isRadiology) {
+      // Toggle dropdown and set view to Radiology (dashboard)
       setIsRadiologyExpanded(!isRadiologyExpanded);
+      onViewChange("Radiology"); // Always set view to Radiology (dashboard) when clicking radiology
       return;
     }
 
@@ -64,6 +66,7 @@ const Layout: React.FC<LayoutProps> = ({
 
     if (isRadiologyChild) {
       onViewChange(normalizedViewId);
+      // Keep dropdown open when selecting a department
     } else {
       onViewChange(viewId);
       setIsRadiologyExpanded(false);
@@ -79,6 +82,11 @@ const Layout: React.FC<LayoutProps> = ({
   const handleSearchClick = () => {
     handleMenuItemClick("search");
   };
+
+  // Check if current view is a radiology department
+  const isRadiologyDepartmentActive = radiologyDepartments.some(
+    (dept) => dept.toLowerCase().replace(/[\s-]/g, "") === currentView
+  );
 
   return (
     <div className="app-container">
@@ -348,14 +356,15 @@ const Layout: React.FC<LayoutProps> = ({
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isRadiology = item.id === "Radiology";
+            const isActive = currentView === item.id || (isRadiology && (currentView === "Radiology" || isRadiologyDepartmentActive));
 
             return (
               <div key={item.id} className="nav-item-container">
                 <button
                   onClick={() => handleMenuItemClick(item.id)}
-                  className={`nav-item ${
-                    currentView === item.id ? "active" : ""
-                  } ${isRadiology ? "has-dropdown" : ""} ${
+                  className={`nav-item ${isActive ? "active" : ""} ${
+                    isRadiology ? "has-dropdown" : ""
+                  } ${
                     isRadiology && isRadiologyExpanded ? "expanded" : ""
                   }`}
                 >
