@@ -1,842 +1,855 @@
+// import React, { useState } from "react";
+// import {
+//   ArrowLeft,
+//   Search,
+//   Eye,
+//   FileImage,
+//   Calendar,
+//   User,
+//   Building2,
+// } from "lucide-react";
+
+// interface Report {
+//   id: string;
+//   serialNumber: number;
+//   patient: string;
+//   department: string;
+//   reportType: string;
+//   date: string;
+// }
+
+// interface TableReportsProps {
+//   department?: string;
+//   onBackToDepartments?: () => void;
+//   onViewDetails?: (report: Report) => void;
+//   onFirmView?: (report: Report) => void;
+// }
+
+// const TableReportsInterface: React.FC<TableReportsProps> = ({
+//   department = "CT Scan",
+//   onBackToDepartments,
+//   onViewDetails,
+//   onFirmView,
+// }) => {
+//   const [fromDate, setFromDate] = useState("");
+//   const [toDate, setToDate] = useState("");
+
+//   // Sample data with dates for filtering
+//   const [reports] = useState<Report[]>([
+//     {
+//       id: "1",
+//       serialNumber: 1,
+//       patient: "",
+//       department: "",
+//       reportType: "",
+//       date: "2024-01-15",
+//     },
+//     {
+//       id: "2",
+//       serialNumber: 2,
+//       patient: "",
+//       department: "",
+//       reportType: "",
+//       date: "2024-01-14",
+//     },
+//     {
+//       id: "3",
+//       serialNumber: 3,
+//       patient: "",
+//       department: "",
+//       reportType: "",
+//       date: "2024-01-13",
+//     },
+//     {
+//       id: "4",
+//       serialNumber: 4,
+//       patient: "",
+//       department: "",
+//       reportType: "",
+//       date: "2024-01-12",
+//     },
+//     {
+//       id: "5",
+//       serialNumber: 5,
+//       patient: "",
+//       department: "",
+//       reportType: "",
+//       date: "2024-01-11",
+//     },
+//   ]);
+
+//   const [filteredReports, setFilteredReports] = useState(reports);
+
+//   const handleSearch = () => {
+//     let filtered = reports;
+
+//     if (fromDate) {
+//       filtered = filtered.filter(
+//         (report) => new Date(report.date) >= new Date(fromDate)
+//       );
+//     }
+
+//     if (toDate) {
+//       filtered = filtered.filter(
+//         (report) => new Date(report.date) <= new Date(toDate)
+//       );
+//     }
+
+//     setFilteredReports(filtered);
+//   };
+
+//   const handleReset = () => {
+//     setFromDate("");
+//     setToDate("");
+//     setFilteredReports(reports);
+//   };
+
+//   return (
+//     <div
+//       style={{
+//         minHeight: "100vh",
+//         backgroundColor: "#f8f9fa",
+//         padding: "20px",
+//       }}
+//     >
+//       <style>{`
+//         .table-container {
+//           max-width: 1200px;
+//           margin: 0 auto;
+//           background: white;
+//           border-radius: 8px;
+//           box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+//           overflow: hidden;
+//         }
+
+//         .header-section {
+//           background: #f8f9fa;
+//           padding: 20px;
+//           border-bottom: 1px solid #e9ecef;
+//         }
+
+//         .page-title {
+//           display: flex;
+//           align-items: center;
+//           gap: 15px;
+//           margin-bottom: 20px;
+//         }
+
+//         .back-button {
+//           display: flex;
+//           align-items: center;
+//           gap: 8px;
+//           padding: 8px 16px;
+//           background: #4285f4;
+//           color: white;
+//           border: none;
+//           border-radius: 6px;
+//           cursor: pointer;
+//           font-weight: 500;
+//           transition: background-color 0.2s;
+//         }
+
+//         .back-button:hover {
+//           background: #3367d6;
+//         }
+
+//         .title-text {
+//           font-size: 24px;
+//           font-weight: 600;
+//           color: #333;
+//           margin: 0;
+//         }
+
+//         .search-section {
+//           display: grid;
+//           grid-template-columns: 1fr 1fr auto auto;
+//           gap: 15px;
+//           align-items: end;
+//         }
+
+//         .form-group {
+//           display: flex;
+//           flex-direction: column;
+//           gap: 5px;
+//         }
+
+//         .form-label {
+//           font-size: 14px;
+//           font-weight: 500;
+//           color: #555;
+//         }
+
+//         .form-input {
+//           padding: 10px 12px;
+//           border: 1px solid #ddd;
+//           border-radius: 4px;
+//           font-size: 14px;
+//           transition: border-color 0.2s;
+//         }
+
+//         .form-input:focus {
+//           outline: none;
+//           border-color: #4285f4;
+//         }
+
+//         .search-button {
+//           display: flex;
+//           align-items: center;
+//           gap: 8px;
+//           padding: 10px 20px;
+//           background: #4285f4;
+//           color: white;
+//           border: none;
+//           border-radius: 4px;
+//           cursor: pointer;
+//           font-weight: 500;
+//           transition: background-color 0.2s;
+//         }
+
+//         .search-button:hover {
+//           background: #3367d6;
+//         }
+
+//         .reset-button {
+//           padding: 10px 16px;
+//           background: #6c757d;
+//           color: white;
+//           border: none;
+//           border-radius: 4px;
+//           cursor: pointer;
+//           font-weight: 500;
+//           transition: background-color 0.2s;
+//         }
+
+//         .reset-button:hover {
+//           background: #5a6268;
+//         }
+
+//         .table-section {
+//           overflow-x: auto;
+//         }
+
+//         .reports-table {
+//           width: 100%;
+//           border-collapse: collapse;
+//           font-size: 14px;
+//         }
+
+//         .table-header {
+//           background: #f8f9fa;
+//           border-bottom: 2px solid #e9ecef;
+//         }
+
+//         .table-header th {
+//           padding: 15px 12px;
+//           text-align: left;
+//           font-weight: 600;
+//           color: #495057;
+//           white-space: nowrap;
+//         }
+
+//         .table-body tr {
+//           border-bottom: 1px solid #e9ecef;
+//           transition: background-color 0.2s;
+//         }
+
+//         .table-body tr:hover {
+//           background-color: #f8f9fa;
+//         }
+
+//         .table-body td {
+//           padding: 12px;
+//           vertical-align: middle;
+//           white-space: nowrap;
+//         }
+
+//         .department-badge {
+//           display: inline-block;
+//           padding: 4px 8px;
+//           background: #e3f2fd;
+//           color: #1976d2;
+//           border-radius: 12px;
+//           font-size: 12px;
+//           font-weight: 500;
+//         }
+
+//         .action-buttons {
+//           display: flex;
+//           gap: 8px;
+//         }
+
+//         .action-button {
+//           display: flex;
+//           align-items: center;
+//           gap: 6px;
+//           padding: 6px 12px;
+//           border: none;
+//           border-radius: 4px;
+//           cursor: pointer;
+//           font-size: 12px;
+//           font-weight: 500;
+//           transition: all 0.2s;
+//         }
+
+//         .view-details-button {
+//           background: #4285f4;
+//           color: white;
+//         }
+
+//         .view-details-button:hover {
+//           background: #3367d6;
+//         }
+
+//         .firm-view-button {
+//           background: #34a853;
+//           color: white;
+//         }
+
+//         .firm-view-button:hover {
+//           background: #2d8f47;
+//         }
+
+//         .no-results {
+//           text-align: center;
+//           padding: 40px;
+//           color: #6c757d;
+//         }
+
+//         .no-results-icon {
+//           width: 48px;
+//           height: 48px;
+//           color: #adb5bd;
+//           margin: 0 auto 16px auto;
+//         }
+
+//         @media (max-width: 768px) {
+//           .search-section {
+//             grid-template-columns: 1fr;
+//             gap: 10px;
+//           }
+
+//           .table-section {
+//             font-size: 12px;
+//           }
+
+//           .table-header th,
+//           .table-body td {
+//             padding: 8px;
+//           }
+
+//           .action-buttons {
+//             flex-direction: column;
+//             gap: 4px;
+//           }
+
+//           .action-button {
+//             font-size: 11px;
+//             padding: 4px 8px;
+//           }
+//         }
+//       `}</style>
+
+//       <div className="table-container">
+//         <div className="header-section">
+//           <div className="page-title">
+//             <button className="back-button" onClick={onBackToDepartments}>
+//               <ArrowLeft size={16} />
+//               Back to Departments
+//             </button>
+//             <h1 className="title-text">{department} Reports</h1>
+//           </div>
+
+//           <div className="search-section">
+//             <div className="form-group">
+//               <label className="form-label">From Date</label>
+//               <input
+//                 type="date"
+//                 className="form-input"
+//                 value={fromDate}
+//                 onChange={(e) => setFromDate(e.target.value)}
+//               />
+//             </div>
+
+//             <div className="form-group">
+//               <label className="form-label">To Date</label>
+//               <input
+//                 type="date"
+//                 className="form-input"
+//                 value={toDate}
+//                 onChange={(e) => setToDate(e.target.value)}
+//               />
+//             </div>
+
+//             <button className="search-button" onClick={handleSearch}>
+//               <Search size={16} />
+//               Search
+//             </button>
+
+//             <button className="reset-button" onClick={handleReset}>
+//               Reset
+//             </button>
+//           </div>
+//         </div>
+
+//         <div className="table-section">
+//           {reports.length === 0 ? (
+//             <div className="no-results">
+//               <FileImage className="no-results-icon" />
+//               <h3>No reports found</h3>
+//               <p>No reports available</p>
+//             </div>
+//           ) : (
+//             <table className="reports-table">
+//               <thead className="table-header">
+//                 <tr>
+//                   <th>S.N</th>
+//                   <th>View Details</th>
+//                   <th>Firm Viewing</th>
+//                 </tr>
+//               </thead>
+//               <tbody className="table-body">
+//                 {reports.map((report) => (
+//                   <tr key={report.id}>
+//                     <td>{report.serialNumber}</td>
+//                     <td>
+//                       <div className="action-buttons">
+//                         <button
+//                           className="action-button view-details-button"
+//                           onClick={() => onViewDetails?.(report)}
+//                         >
+//                           <Eye size={14} />
+//                           View Details
+//                         </button>
+//                       </div>
+//                     </td>
+//                     <td>
+//                       <div className="action-buttons">
+//                         <button
+//                           className="action-button firm-view-button"
+//                           onClick={() => onFirmView?.(report)}
+//                         >
+//                           <FileImage size={14} />
+//                           Firm View
+//                         </button>
+//                       </div>
+//                     </td>
+//                   </tr>
+//                 ))}
+//               </tbody>
+//             </table>
+//           )}
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
+
+// export default TableReportsInterface;
 import React, { useState } from "react";
-import {
-  FileText,
-  User,
-  Calendar,
-  Eye,
-  Printer,
-  Download,
-  Building2,
-} from "lucide-react";
-import { Patient, Report } from "../types";
+import { ArrowLeft, Search, Eye, FileImage } from "lucide-react";
+
+interface Patient {
+  id: string;
+  name: string;
+  number: string;
+}
+
+interface Report {
+  id: string;
+  patientId: string;
+  department: string;
+  reportType: string;
+  uploadedAt: string;
+  uploadedBy: string;
+  reportText: string;
+  reportUrl?: string;
+}
 
 interface ReportsListingProps {
   patients: Patient[];
   reports: Report[];
   initialDepartmentFilter?: string;
+  onBackToDepartments?: () => void;
 }
 
 const ReportsListing: React.FC<ReportsListingProps> = ({
   patients,
   reports,
   initialDepartmentFilter = "",
+  onBackToDepartments,
 }) => {
-  const [selectedDepartment, setSelectedDepartment] = useState<string>(
-    initialDepartmentFilter
-  );
-  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [selectedDepartment] = useState<string>(initialDepartmentFilter);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const [filteredReports, setFilteredReports] = useState(reports);
 
-  const departments = ["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"];
-  const firms = ["Firm A", "Firm B", "Firm C"];
+  const handleSearch = () => {
+    let filtered = reports.filter((report) =>
+      selectedDepartment ? report.department === selectedDepartment : true
+    );
 
-  const filteredReports = selectedDepartment
-    ? reports.filter((report) => report.department === selectedDepartment)
-    : reports;
-
-  const getPatientName = (patientId: string) => {
-    const patient = patients.find((p) => p.id === patientId);
-    return patient ? patient.name : "Unknown Patient";
-  };
-
-  const getPatientNumber = (patientId: string) => {
-    const patient = patients.find((p) => p.id === patientId);
-    return patient ? patient.number : "N/A";
-  };
-
-  const handlePrintReport = (report: Report) => {
-    const patient = patients.find((p) => p.id === report.patientId);
-    const printContent = `
-      <html>
-        <head>
-          <title>Medical Report - ${report.reportType}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-            .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-            .patient-info { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
-            .report-content { margin: 30px 0; }
-            .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>Hospital Management System</h1>
-            <h2>Radiology Department</h2>
-          </div>
-          <div class="patient-info">
-            <h3>Patient Information</h3>
-            <p><strong>Name:</strong> ${patient?.name || "N/A"}</p>
-            <p><strong>Patient Number:</strong> ${patient?.number || "N/A"}</p>
-            <p><strong>Department:</strong> ${report.department}</p>
-            <p><strong>Report Type:</strong> ${report.reportType}</p>
-            <p><strong>Date:</strong> ${new Date(
-              report.uploadedAt
-            ).toLocaleDateString()}</p>
-            <p><strong>Doctor:</strong> ${report.uploadedBy}</p>
-          </div>
-          <div class="report-content">
-            <h3>Report Details</h3>
-            <p>${report.reportText}</p>
-          </div>
-          <div class="footer">
-            <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
-          </div>
-        </body>
-      </html>
-    `;
-
-    const printWindow = window.open("", "_blank");
-    if (printWindow) {
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-      printWindow.print();
+    if (fromDate) {
+      filtered = filtered.filter(
+        (report) => new Date(report.uploadedAt) >= new Date(fromDate)
+      );
     }
+
+    if (toDate) {
+      filtered = filtered.filter(
+        (report) => new Date(report.uploadedAt) <= new Date(toDate)
+      );
+    }
+
+    setFilteredReports(filtered);
   };
 
-  const getPlaceholderImage = (dept: string) => {
-    const images: { [key: string]: string } = {
-      CT: "https://via.placeholder.com/150?text=CT+Scan",
-      MRI: "https://via.placeholder.com/150?text=MRI+Scan",
-      ECG: "https://via.placeholder.com/150?text=ECG+Graph",
-      USG: "https://via.placeholder.com/150?text=Ultrasound",
-      "X-ray": "https://via.placeholder.com/150?text=X-Ray",
-      TMT: "https://via.placeholder.com/150?text=TMT+Report",
-      Holter: "https://via.placeholder.com/150?text=Holter+Monitor",
-    };
-    return images[dept] || "https://via.placeholder.com/150?text=Image";
+  const handleReset = () => {
+    setFromDate("");
+    setToDate("");
+    setFilteredReports(
+      reports.filter((report) =>
+        selectedDepartment ? report.department === selectedDepartment : true
+      )
+    );
+  };
+
+  const handleViewDetails = (report: Report) => {
+    console.log("View Details:", report);
+    // Add your view details logic here
+  };
+
+  const handleFirmView = (report: Report) => {
+    console.log("Firm View:", report);
+    // Add your firm view logic here
   };
 
   return (
-    <div className="background-container">
-      <div className="reports-listing">
-        <style>{`
-          .background-container {
-            background: linear-gradient(135deg, #3b82f6 0%, #93c5fd 25%, #ffffff 50%, #dbeafe 75%, #1e40af 100%);
-            min-height: 100vh;
-            padding: 1rem;
+    <div
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "#f8f9fa",
+        padding: "20px",
+      }}
+    >
+      <style>{`
+        .table-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          overflow: hidden;
+        }
+
+        .header-section {
+          background: #f8f9fa;
+          padding: 20px;
+          border-bottom: 1px solid #e9ecef;
+        }
+
+        .page-title {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 20px;
+        }
+
+        .back-button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 16px;
+          background: #4285f4;
+          color: white;
+          border: none;
+          border-radius: 6px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: background-color 0.2s;
+        }
+
+        .back-button:hover {
+          background: #3367d6;
+        }
+
+        .title-text {
+          font-size: 24px;
+          font-weight: 600;
+          color: #333;
+          margin: 0;
+        }
+
+        .search-section {
+          display: grid;
+          grid-template-columns: 1fr 1fr auto auto;
+          gap: 15px;
+          align-items: end;
+        }
+
+        .form-group {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+
+        .form-label {
+          font-size: 14px;
+          font-weight: 500;
+          color: #555;
+        }
+
+        .form-input {
+          padding: 10px 12px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 14px;
+          transition: border-color 0.2s;
+        }
+
+        .form-input:focus {
+          outline: none;
+          border-color: #4285f4;
+        }
+
+        .search-button {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 10px 20px;
+          background: #4285f4;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: background-color 0.2s;
+        }
+
+        .search-button:hover {
+          background: #3367d6;
+        }
+
+        .reset-button {
+          padding: 10px 16px;
+          background: #6c757d;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-weight: 500;
+          transition: background-color 0.2s;
+        }
+
+        .reset-button:hover {
+          background: #5a6268;
+        }
+
+        .table-section {
+          overflow-x: auto;
+        }
+
+        .reports-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 14px;
+        }
+
+        .table-header {
+          background: #f8f9fa;
+          border-bottom: 2px solid #e9ecef;
+        }
+
+        .table-header th {
+          padding: 15px 12px;
+          text-align: left;
+          font-weight: 600;
+          color: #495057;
+          white-space: nowrap;
+        }
+
+        .table-body tr {
+          border-bottom: 1px solid #e9ecef;
+          transition: background-color 0.2s;
+        }
+
+        .table-body tr:hover {
+          background-color: #f8f9fa;
+        }
+
+        .table-body td {
+          padding: 12px;
+          vertical-align: middle;
+          white-space: nowrap;
+        }
+
+        .action-buttons {
+          display: flex;
+          gap: 8px;
+        }
+
+        .action-button {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          padding: 6px 12px;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 12px;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+
+        .view-details-button {
+          background: #4285f4;
+          color: white;
+        }
+
+        .view-details-button:hover {
+          background: #3367d6;
+        }
+
+        .firm-view-button {
+          background: #34a853;
+          color: white;
+        }
+
+        .firm-view-button:hover {
+          background: #2d8f47;
+        }
+
+        .no-results {
+          text-align: center;
+          padding: 40px;
+          color: #6c757d;
+        }
+
+        .no-results-icon {
+          width: 48px;
+          height: 48px;
+          color: #adb5bd;
+          margin: 0 auto 16px auto;
+        }
+
+        @media (max-width: 768px) {
+          .search-section {
+            grid-template-columns: 1fr;
+            gap: 10px;
           }
 
-          .reports-listing {
-            display: flex;
+          .table-section {
+            font-size: 12px;
+          }
+
+          .table-header th,
+          .table-body td {
+            padding: 8px;
+          }
+
+          .action-buttons {
             flex-direction: column;
-            gap: 1.5rem;
-          }
-
-          .filter-section {
-            background-color: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
-            padding: 1.5rem;
-          }
-
-          .filter-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1rem;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          }
-
-          .filter-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #111827;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-          }
-
-          .filter-count {
-            font-size: 0.875rem;
-            color: #6b7280;
-          }
-
-          .filter-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          }
-
-          .filter-button {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;  
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.875rem;
-          }
-
-          .filter-button.active {
-            background-color: #2563eb;
-            color: white;
-          }
-
-          .filter-button.inactive {
-            background-color: #f3f4f6;
-            color: #374151;
-          }
-
-          .filter-button.inactive:hover {
-            background-color: #e5e7eb;
-          }
-
-          .reports-table-container, .firms-table-container {
-            background-color: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-            border: 1px solid #e5e7eb;
-            overflow: hidden;
-          }
-
-          .table-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid #e5e7eb;
-          }
-
-          .table-title {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: #111827;
-            margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-          }
-
-          .empty-state {
-            padding: 3rem;
-            text-align: center;
-          }
-
-          .empty-icon {
-            width: 3rem;
-            height: 3rem;
-            color: #9ca3af;
-            margin: 0 auto 1rem auto;
-          }
-
-          .empty-title {
-            font-size: 1.125rem;
-            font-weight: 500;
-            color: #111827;
-            margin: 0 0 0.5rem 0;
-          }
-
-          .empty-description {
-            color: #6b7280;
-            margin: 0;
-          }
-
-          .reports-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            padding: 1rem;
-          }
-
-          .report-card {
-            background-color: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-          }
-
-          .report-field {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-          }
-
-          .report-label {
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #6b7280;
-            text-transform: uppercase;
-          }
-
-          .report-value {
-            font-size: 0.875rem;
-            color: #111827;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-          }
-
-          .department-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 0.125rem 0.625rem;
-            border-radius: 9999px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            background-color: #dbeafe;
-            color: #1e40af;
-          }
-
-          .actions-cell {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-top: 0.5rem;
+            gap: 4px;
           }
 
           .action-button {
-            padding: 0.25rem;
-            border-radius: 0.25rem;
-            border: none;
-            cursor: pointer;
-            transition: color 0.2s;
-            background: none;
+            font-size: 11px;
+            padding: 4px 8px;
           }
+        }
+      `}</style>
 
-          .action-button.view {
-            color: #2563eb;
-          }
-
-          .action-button.view:hover {
-            color: #1d4ed8;
-          }
-
-          .action-button.print {
-            color: #059669;
-          }
-
-          .action-button.print:hover {
-            color: #047857;
-          }
-
-          .action-button.download {
-            color: #7c3aed;
-          }
-
-          .action-button.download:hover {
-            color: #6d28d9;
-          }
-
-          .firms-table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-
-          .table-head {
-            background-color: #f9fafb;
-          }
-
-          .table-head th {
-            padding: 0.75rem 1.5rem;
-            text-align: left;
-            font-size: 0.75rem;
-            font-weight: 500;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid #e5e7eb;
-          }
-
-          .table-body tr {
-            border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.2s;
-          }
-
-          .table-body tr:hover {
-            background-color: #f9fafb;
-          }
-
-          .table-body td {
-            padding: 1rem 1.5rem;
-            white-space: nowrap;
-            vertical-align: middle;
-          }
-
-          .firm-image {
-            width: 50px;
-            height: 50px;
-            object-fit: cover;
-            border-radius: 0.25rem;
-          }
-
-          .modal-overlay {
-            position: fixed;
-            inset: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            z-index: 50;
-          }
-
-          .modal-content {
-            background-color: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            max-width: 56rem;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-          }
-
-          .modal-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid #e5e7eb;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-          }
-
-          .modal-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #111827;
-            margin: 0;
-          }
-
-          .modal-close {
-            color: #9ca3af;
-            font-size: 1.5rem;
-            background: none;
-            border: none;
-            cursor: pointer;
-            transition: color 0.2s;
-          }
-
-          .modal-close:hover {
-            color: #6b7280;
-          }
-
-          .modal-body {
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-          }
-
-          .patient-info-section {
-            background-color: #f9fafb;
-            border-radius: 0.5rem;
-            padding: 1rem;
-          }
-
-          .info-section-title {
-            font-weight: 500;
-            color: #111827;
-            margin: 0 0 0.75rem 0;
-          }
-
-          .info-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 1rem;
-            font-size: 0.875rem;
-          }
-
-          .info-item {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          }
-
-          .info-label {
-            color: #6b7280;
-          }
-
-          .info-value {
-            font-weight: 500;
-            color: #111827;
-          }
-
-          .report-details-section h4 {
-            font-weight: 500;
-            color: #111827;
-            margin: 0 0 0.75rem 0;
-          }
-
-          .report-content {
-            background-color: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            padding: 1rem;
-          }
-
-          .report-text {
-            color: #374151;
-            line-height: 1.6;
-            white-space: pre-wrap;
-            margin: 0;
-          }
-
-          .report-meta {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 0.875rem;
-            color: #6b7280;
-            padding-top: 1rem;
-            border-top: 1px solid #e5e7eb;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-          }
-
-          .meta-info {
-            color: #111827;
-            font-weight: 500;
-          }
-
-          .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.75rem;
-            padding-top: 1rem;
-            border-top: 1px solid #e5e7eb;
-            flex-wrap: wrap;
-          }
-
-          .modal-button {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-          }
-
-          .modal-button.print {
-            background-color: #059669;
-            color: white;
-          }
-
-          .modal-button.print:hover {
-            background-color: #047857;
-          }
-
-          .modal-button.close {
-            background-color: #6b7280;
-            color: white;
-          }
-
-          .modal-button.close:hover {
-            background-color: #4b5563;
-          }
-
-          .main-content {
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-          }
-
-          .reports-table-container, .firms-table-container {
-            flex: 1;
-          }
-
-          @media (min-width: 640px) {
-            .background-container {
-              padding: 1.5rem;
-            }
-
-            .filter-section {
-              padding: 1.5rem;
-            }
-
-            .filter-header {
-              flex-wrap: nowrap;
-            }
-
-            .filter-button {
-              font-size: 0.875rem;
-              padding: 0.5rem 1rem;
-            }
-
-            .table-header {
-              padding: 1rem 1.5rem;
-            }
-
-            .info-grid {
-              grid-template-columns: repeat(2, 1fr);
-            }
-
-            .modal-actions {
-              flex-wrap: nowrap;
-            }
-
-            .main-content {
-              flex-direction: row;
-            }
-
-            .report-field {
-              flex-direction: row;
-              justify-content: space-between;
-            }
-
-            .report-label {
-              flex: 1;
-            }
-
-            .report-value {
-              flex: 2;
-            }
-          }
-
-          @media (min-width: 768px) {
-            .reports-listing {
-              gap: 1.5rem;
-            }
-
-            .modal-body {
-              padding: 1.5rem;
-            }
-          }
-        `}</style>
-
-        <div className="filter-section">
-          <div className="filter-header">
-            <h3 className="filter-title">
-              <Building2 size={20} color="#2563eb" />
-              Filter by Department
-            </h3>
-            <div className="filter-count">
-              {filteredReports.length} report
-              {filteredReports.length !== 1 ? "s" : ""} found
-            </div>
-          </div>
-          <div className="filter-buttons">
-            <button
-              onClick={() => setSelectedDepartment("")}
-              className={`filter-button ${
-                selectedDepartment === "" ? "active" : "inactive"
-              }`}
-            >
-              All Departments
+      <div className="table-container">
+        <div className="header-section">
+          <div className="page-title">
+            <button className="back-button" onClick={onBackToDepartments}>
+              <ArrowLeft size={16} />
+              Back to Departments
             </button>
-            {departments.map((dept) => (
-              <button
-                key={dept}
-                onClick={() => setSelectedDepartment(dept)}
-                className={`filter-button ${
-                  selectedDepartment === dept ? "active" : "inactive"
-                }`}
-              >
-                {dept}
-              </button>
-            ))}
+            <h1 className="title-text">
+              {selectedDepartment || "All"} Reports
+            </h1>
+          </div>
+
+          <div className="search-section">
+            <div className="form-group">
+              <label className="form-label">From Date</label>
+              <input
+                type="date"
+                className="form-input"
+                value={fromDate}
+                onChange={(e) => setFromDate(e.target.value)}
+              />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">To Date</label>
+              <input
+                type="date"
+                className="form-input"
+                value={toDate}
+                onChange={(e) => setToDate(e.target.value)}
+              />
+            </div>
+
+            <button className="search-button" onClick={handleSearch}>
+              <Search size={16} />
+              Search
+            </button>
+
+            <button className="reset-button" onClick={handleReset}>
+              Reset
+            </button>
           </div>
         </div>
 
-        <div className="main-content">
-          <div className="reports-table-container">
-            <div className="table-header">
-              <h3 className="table-title">
-                <FileText size={20} color="#059669" />
-                Reports Listing
-              </h3>
+        <div className="table-section">
+          {filteredReports.length === 0 ? (
+            <div className="no-results">
+              <FileImage className="no-results-icon" />
+              <h3>No reports found</h3>
+              <p>No reports match your search criteria</p>
             </div>
-
-            {filteredReports.length === 0 ? (
-              <div className="empty-state">
-                <FileText size={48} className="empty-icon" />
-                <h3 className="empty-title">No reports found</h3>
-                <p className="empty-description">
-                  {selectedDepartment
-                    ? `No reports available for ${selectedDepartment} department`
-                    : "No reports have been uploaded yet"}
-                </p>
-              </div>
-            ) : (
-              <div className="reports-list">
-                {filteredReports.map((report) => (
-                  <div key={report.id} className="report-card">
-                    <div className="report-field">
-                      <span className="report-label">Patient</span>
-                      <div className="report-value">
-                        <User size={16} color="#9ca3af" />
-                        {getPatientName(report.patientId)} ({getPatientNumber(report.patientId)})
-                      </div>
-                    </div>
-                    <div className="report-field">
-                      <span className="report-label">Department</span>
-                      <span className="report-value department-badge">
-                        {report.department}
-                      </span>
-                    </div>
-                    <div className="report-field">
-                      <span className="report-label">Report Type</span>
-                      <span className="report-value">{report.reportType}</span>
-                    </div>
-                    <div className="report-field">
-                      <span className="report-label">Date</span>
-                      <div className="report-value">
-                        <Calendar size={16} />
-                        {new Date(report.uploadedAt).toLocaleDateString()}
-                      </div>
-                    </div>
-                    <div className="report-field">
-                      <span className="report-label">Doctor</span>
-                      <span className="report-value">{report.uploadedBy}</span>
-                    </div>
-                    <div className="actions-cell">
-                      <button
-                        onClick={() => setSelectedReport(report)}
-                        className="action-button view"
-                        title="View Report"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        onClick={() => handlePrintReport(report)}
-                        className="action-button print"
-                        title="Print Report"
-                      >
-                        <Printer size={16} />
-                      </button>
-                      {report.reportUrl && (
+          ) : (
+            <table className="reports-table">
+              <thead className="table-header">
+                <tr>
+                  <th>S.N</th>
+                  <th>View Details</th>
+                  <th>Firm Viewing</th>
+                </tr>
+              </thead>
+              <tbody className="table-body">
+                {filteredReports.map((report, index) => (
+                  <tr key={report.id}>
+                    <td>{index + 1}</td>
+                    <td>
+                      <div className="action-buttons">
                         <button
-                          className="action-button download"
-                          title="Download File"
+                          className="action-button view-details-button"
+                          onClick={() => handleViewDetails(report)}
                         >
-                          <Download size={16} />
+                          <Eye size={14} />
+                          View Details
                         </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="firms-table-container">
-            <div className="table-header">
-              <h3 className="table-title">
-                <Building2 size={20} color="#059669" />
-                Firm Listing
-              </h3>
-            </div>
-            <div className="table-wrapper">
-              <table className="firms-table">
-                <thead className="table-head">
-                  <tr>
-                    <th>Patient</th>
-                    <th>Department</th>
-                    <th>Image</th>
+                      </div>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        <button
+                          className="action-button firm-view-button"
+                          onClick={() => handleFirmView(report)}
+                        >
+                          <FileImage size={14} />
+                          Firm View
+                        </button>
+                      </div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="table-body">
-                  {firms.map((firm, index) => {
-                    const dept = departments[index % departments.length];
-                    return (
-                      <tr key={index}>
-                        <td>{firm}</td>
-                        <td>
-                          <span className="department-badge">{dept}</span>
-                        </td>
-                        <td>
-                          <img
-                            src={getPlaceholderImage(dept)}
-                            alt={`${dept} Image`}
-                            className="firm-image"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-
-        {selectedReport && (
-          <div className="modal-overlay">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h3 className="modal-title">Report Details</h3>
-                <button
-                  onClick={() => setSelectedReport(null)}
-                  className="modal-close"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="modal-body">
-                <div className="patient-info-section">
-                  <h4 className="info-section-title">Patient Information</h4>
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <span className="info-label">Name:</span>
-                      <span className="info-value">
-                        {getPatientName(selectedReport.patientId)}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Number:</span>
-                      <span className="info-value">
-                        {getPatientNumber(selectedReport.patientId)}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Department:</span>
-                      <span className="info-value">
-                        {selectedReport.department}
-                      </span>
-                    </div>
-                    <div className="info-item">
-                      <span className="info-label">Report Type:</span>
-                      <span className="info-value">
-                        {selectedReport.reportType}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="report-details-section">
-                  <h4>Report Details</h4>
-                  <div className="report-content">
-                    <p className="report-text">{selectedReport.reportText}</p>
-                  </div>
-                </div>
-
-                <div className="report-meta">
-                  <div>
-                    Uploaded by:{" "}
-                    <span className="meta-info">
-                      {selectedReport.uploadedBy}
-                    </span>
-                  </div>
-                  <div>
-                    Date:{" "}
-                    <span className="meta-info">
-                      {new Date(selectedReport.uploadedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="modal-actions">
-                  <button
-                    onClick={() => handlePrintReport(selectedReport)}
-                    className="modal-button print"
-                  >
-                    <Printer size={16} />
-                    Print Report
-                  </button>
-                  <button
-                    onClick={() => setSelectedReport(null)}
-                    className="modal-button close"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

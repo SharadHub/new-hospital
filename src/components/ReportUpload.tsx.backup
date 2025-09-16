@@ -1,0 +1,1374 @@
+import React, { useState, useRef, useCallback, useEffect } from "react";
+import {
+  Upload,
+  X,
+  FileText,
+  Image,
+  File,
+  Save,
+  AlertCircle,
+  Check,
+  Plus,
+  Trash2,
+  Camera,
+  FolderOpen,
+  Scan,
+  Download,
+  RefreshCw,
+  Eye,
+  FileUp,
+  CheckCircle,
+  Loader,
+  Clock,
+  User,
+  Building,
+  Calendar,
+  Stethoscope,
+  Activity,
+  Brain,
+  Target,
+  Settings,
+  Info,
+} from "lucide-react";
+
+// Types - these should match your existing types or be added to your types folder
+interface PatientInfo {
+  name: string;
+  fileNumber: string;
+  age: number;
+  gender: "Male" | "Female" | "Other";
+}
+
+interface FacilityInfo {
+  name: string;
+  address: string;
+}
+
+interface ExaminationDetails {
+  examType: string;
+  clinicalIndication: string;
+  studyDate: string;
+  reportDate: string;
+  reportingDoctor: string;
+}
+
+interface Findings {
+  primaryObservations: string[];
+  impressions: string[];
+  recommendations: string[];
+}
+
+interface ReportMetadata {
+  reportType: string;
+  bodyRegion: string;
+  priority: "Urgent" | "Standard" | "Routine";
+  status: "Draft" | "Final Report" | "Reviewed";
+}
+
+interface RadiologyReport {
+  id: string;
+  patientInfo: PatientInfo;
+  facilityInfo: FacilityInfo;
+  examination: ExaminationDetails;
+  findings: Findings;
+  metadata: ReportMetadata;
+  uploadedFile?: File;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface UploadedFileInfo {
+  file: File;
+  url: string;
+  type: "pdf" | "document" | "image";
+}
+
+interface ProcessingStatus {
+  isProcessing: boolean;
+  progress: number;
+  stage: "uploading" | "extracting" | "parsing" | "complete" | "error";
+  message: string;
+}
+
+// Props interface for the component
+interface ReportUploadProps {
+  onReportSubmit?: (report: RadiologyReport) => void;
+  onClose?: () => void;
+  initialData?: RadiologyReport | null;
+  mode?: "create" | "edit";
+}
+
+// Mock OCR Service - replace with real implementation
+const mockOCRService = {
+  extractTextFromFile: async (
+    file: File,
+    onProgress?: (status: ProcessingStatus) => void
+  ) => {
+    const stages = [
+      {
+        progress: 10,
+        stage: "uploading" as const,
+        message: "Preparing file for processing...",
+      },
+      {
+        progress: 30,
+        stage: "extracting" as const,
+        message: "Extracting text from document...",
+      },
+      {
+        progress: 70,
+        stage: "parsing" as const,
+        message: "Parsing extracted data...",
+      },
+      {
+        progress: 100,
+        stage: "complete" as const,
+        message: "Processing complete!",
+      },
+    ];
+
+    for (const stageInfo of stages) {
+      onProgress?.({
+        isProcessing: stageInfo.progress < 100,
+        ...stageInfo,
+      });
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    }
+
+    return {
+      patientInfo: {
+        name: "Mary A. Jones",
+        fileNumber: "89001",
+        age: 71,
+        gender: "Female" as const,
+      },
+      facilityInfo: {
+        name: "ABC Chiropractic Radiology",
+        address: "123 Main Street, Alta, Alberta T8J 3N9",
+      },
+      examination: {
+        examType: "Lumbar Spine (A-P, Lateral, Oblique, P-A spot)",
+        clinicalIndication: "Acute thoracolumbar pain after fall in bathtub",
+        studyDate: "1989-07-01",
+        reportDate: "1989-07-03",
+        reportingDoctor: "J. Smith, D.C.",
+      },
+      findings: {
+        primaryObservations: [
+          "Lumbar spine is hyperlordotic",
+          "Marked osteopenia throughout lumbar spine and pelvis",
+          "Anterior wedge deformity of T12 with 50% loss of anterior vertebral body height",
+          "No evidence of posterior vertebral body collapse",
+        ],
+        impressions: [
+          "T12 compression fracture with 50% decrease of anterior vertebral body height",
+          "Severe post-menopausal osteoporosis",
+          "Lumbar hyperlordosis",
+        ],
+        recommendations: [
+          "CT scan of thoracolumbar region should be requested if neurological signs appear clinically",
+        ],
+      },
+      confidence: 0.92,
+    };
+  },
+};
+
+const ReportUpload: React.FC<ReportUploadProps> = ({
+  onReportSubmit,
+  onClose,
+  initialData = null,
+  mode = "create",
+}) => {
+  const [uploadedFile, setUploadedFile] = useState<UploadedFileInfo | null>(
+    null
+  );
+  const [processingStatus, setProcessingStatus] = useState<ProcessingStatus>({
+    isProcessing: false,
+    progress: 0,
+    stage: "uploading",
+    message: "",
+  });
+  const [extractedData, setExtractedData] = useState<any>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const [showFullForm, setShowFullForm] = useState(false);
+  const [formData, setFormData] = useState<
+    Omit<RadiologyReport, "id" | "createdAt" | "updatedAt">
+  >({
+    patientInfo: {
+      name: "",
+      fileNumber: "",
+      age: 0,
+      gender: "Female",
+    },
+    facilityInfo: {
+      name: "",
+      address: "",
+    },
+    examination: {
+      examType: "",
+      clinicalIndication: "",
+      studyDate: "",
+      reportDate: "",
+      reportingDoctor: "",
+    },
+    findings: {
+      primaryObservations: [""],
+      impressions: [""],
+      recommendations: [""],
+    },
+    metadata: {
+      reportType: "X-ray/Radiological Report",
+      bodyRegion: "",
+      priority: "Standard",
+      status: "Draft",
+    },
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load initial data if in edit mode
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        patientInfo: initialData.patientInfo,
+        facilityInfo: initialData.facilityInfo,
+        examination: initialData.examination,
+        findings: initialData.findings,
+        metadata: initialData.metadata,
+      });
+      setShowFullForm(true);
+    }
+  }, [initialData]);
+
+  // Handle drag events
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  }, []);
+
+  // Handle dropped files
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  }, []);
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileUpload(e.target.files[0]);
+    }
+  };
+
+  // Process uploaded file with OCR
+  const handleFileUpload = async (file: File) => {
+    if (file.size > 10 * 1024 * 1024) {
+      alert("File size must be less than 10MB");
+      return;
+    }
+
+    const validTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+    ];
+
+    if (!validTypes.includes(file.type)) {
+      alert("Please upload a PDF, Word document, or image file");
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    const fileType =
+      file.type === "application/pdf"
+        ? "pdf"
+        : file.type.includes("word")
+        ? "document"
+        : "image";
+
+    setUploadedFile({ file, url, type: fileType });
+
+    // Start OCR processing
+    try {
+      const extracted = await mockOCRService.extractTextFromFile(
+        file,
+        setProcessingStatus
+      );
+      setExtractedData(extracted);
+      setFormData((prev) => ({
+        ...prev,
+        patientInfo: { ...prev.patientInfo, ...extracted.patientInfo },
+        facilityInfo: { ...prev.facilityInfo, ...extracted.facilityInfo },
+        examination: { ...prev.examination, ...extracted.examination },
+        findings: { ...prev.findings, ...extracted.findings },
+      }));
+    } catch (error) {
+      console.error("OCR processing failed:", error);
+      setProcessingStatus({
+        isProcessing: false,
+        progress: 0,
+        stage: "error",
+        message: "Failed to process document",
+      });
+    }
+  };
+
+  // Form handlers
+  const handleInputChange = (section: string, field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section as keyof typeof prev],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleArrayChange = (
+    section: string,
+    field: string,
+    index: number,
+    value: string
+  ) => {
+    setFormData((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section as keyof typeof prev],
+        [field]: (prev[section as keyof typeof prev] as any)[field].map(
+          (item: string, i: number) => (i === index ? value : item)
+        ),
+      },
+    }));
+  };
+
+  const addArrayItem = (section: string, field: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      [section]: {
+        ...prev[section as keyof typeof prev],
+        [field]: [...(prev[section as keyof typeof prev] as any)[field], ""],
+      },
+    }));
+  };
+
+  const removeArrayItem = (section: string, field: string, index: number) => {
+    const currentArray = (formData[section as keyof typeof formData] as any)[
+      field
+    ];
+    if (currentArray.length > 1) {
+      setFormData((prev) => ({
+        ...prev,
+        [section]: {
+          ...prev[section as keyof typeof prev],
+          [field]: currentArray.filter((_: any, i: number) => i !== index),
+        },
+      }));
+    }
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      const reportData: RadiologyReport = {
+        ...formData,
+        id:
+          initialData?.id ||
+          formData.patientInfo.fileNumber ||
+          Date.now().toString(),
+        uploadedFile: uploadedFile?.file,
+        createdAt: initialData?.createdAt || new Date(),
+        updatedAt: new Date(),
+      };
+
+      // Call the parent callback if provided
+      if (onReportSubmit) {
+        onReportSubmit(reportData);
+      }
+
+      // Simulate saving
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      alert("Report saved successfully!");
+
+      // Close modal or reset form
+      if (onClose) {
+        onClose();
+      } else {
+        resetForm();
+      }
+    } catch (error) {
+      console.error("Error submitting report:", error);
+      alert("Error saving report. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const resetForm = () => {
+    setUploadedFile(null);
+    setExtractedData(null);
+    setProcessingStatus({
+      isProcessing: false,
+      progress: 0,
+      stage: "uploading",
+      message: "",
+    });
+    setShowFullForm(false);
+    setFormData({
+      patientInfo: { name: "", fileNumber: "", age: 0, gender: "Female" },
+      facilityInfo: { name: "", address: "" },
+      examination: {
+        examType: "",
+        clinicalIndication: "",
+        studyDate: "",
+        reportDate: "",
+        reportingDoctor: "",
+      },
+      findings: {
+        primaryObservations: [""],
+        impressions: [""],
+        recommendations: [""],
+      },
+      metadata: {
+        reportType: "X-ray/Radiological Report",
+        bodyRegion: "",
+        priority: "Standard",
+        status: "Draft",
+      },
+    });
+  };
+
+  const getFileIcon = (type: string) => {
+    switch (type) {
+      case "pdf":
+        return <FileText className="text-red-600" size={24} />;
+      case "document":
+        return <File className="text-blue-600" size={24} />;
+      case "image":
+        return <Image className="text-green-600" size={24} />;
+      default:
+        return <File className="text-gray-600" size={24} />;
+    }
+  };
+
+  const getProgressColor = (stage: string) => {
+    switch (stage) {
+      case "uploading":
+        return "bg-blue-500";
+      case "extracting":
+        return "bg-yellow-500";
+      case "parsing":
+        return "bg-purple-500";
+      case "complete":
+        return "bg-green-500";
+      case "error":
+        return "bg-red-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  // If this is being used as a modal
+  if (onClose) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="bg-white rounded-2xl max-w-6xl w-full max-h-[95vh] overflow-hidden">
+          <div className="flex items-center justify-between p-6 border-b">
+            <h2 className="text-2xl font-bold flex items-center">
+              <Scan className="mr-3 text-blue-600" size={28} />
+              {mode === "edit" ? "Edit Report" : "Document Scanner"}
+            </h2>
+            <button
+              onClick={onClose}
+              className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          <div className="p-6 overflow-y-auto max-h-[calc(95vh-80px)]">
+            {/* Modal content would go here - same as the main content below */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Include the same blocks as below */}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main component layout (when not used as modal)
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4 flex items-center justify-center">
+            <Scan className="mr-3 text-blue-600" size={40} />
+            Digital Document Scanner & Report Generator
+          </h1>
+          <p className="text-xl text-gray-600">
+            Transform physical documents into digital radiology reports with
+            AI-powered OCR
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Block 1: Document Scanner */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                <FileUp className="mr-3 text-blue-600" size={28} />
+                Document Scanner
+              </h2>
+              {uploadedFile && (
+                <button
+                  onClick={resetForm}
+                  className="text-gray-500 hover:text-gray-700 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                  title="Reset and start over"
+                >
+                  <RefreshCw size={20} />
+                </button>
+              )}
+            </div>
+
+            {!uploadedFile ? (
+              /* Upload Zone */
+              <div
+                className={`border-2 border-dashed rounded-xl p-12 text-center transition-all duration-200 ${
+                  dragActive
+                    ? "border-blue-400 bg-blue-50 scale-105"
+                    : "border-gray-300 bg-gray-50 hover:border-gray-400"
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
+                <div className="space-y-6">
+                  <div className="flex justify-center">
+                    <div
+                      className={`p-6 rounded-full ${
+                        dragActive ? "bg-blue-100" : "bg-gray-100"
+                      }`}
+                    >
+                      <Upload
+                        className={`${
+                          dragActive ? "text-blue-600" : "text-gray-400"
+                        }`}
+                        size={48}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                      Drop your document here to scan
+                    </h3>
+                    <p className="text-gray-500 mb-6">
+                      Supports PDF, Word documents, and images (max 10MB)
+                      <br />
+                      AI will automatically extract and structure the data
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      <FolderOpen className="mr-2" size={20} />
+                      Choose File
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium"
+                    >
+                      <Camera className="mr-2" size={20} />
+                      Scan Document
+                    </button>
+                  </div>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  onChange={handleFileSelect}
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  className="hidden"
+                />
+              </div>
+            ) : (
+              /* Uploaded File Preview */
+              <div className="space-y-6">
+                <div className="bg-gray-50 rounded-xl p-6 border border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="p-3 bg-white rounded-lg shadow-sm">
+                        {getFileIcon(uploadedFile.type)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">
+                          {uploadedFile.file.name}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          {(uploadedFile.file.size / 1024 / 1024).toFixed(2)} MB
+                          • {uploadedFile.type.toUpperCase()}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => window.open(uploadedFile.url)}
+                      className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                      title="Preview document"
+                    >
+                      <Eye size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Processing Status */}
+                <div
+                  className={`rounded-xl p-6 border ${
+                    processingStatus.stage === "complete"
+                      ? "bg-green-50 border-green-200"
+                      : processingStatus.stage === "error"
+                      ? "bg-red-50 border-red-200"
+                      : "bg-blue-50 border-blue-200"
+                  }`}
+                >
+                  <div className="flex items-start space-x-4">
+                    <div className="flex-shrink-0 mt-1">
+                      {processingStatus.isProcessing ? (
+                        <Loader
+                          className="animate-spin text-blue-600"
+                          size={24}
+                        />
+                      ) : processingStatus.stage === "complete" ? (
+                        <CheckCircle className="text-green-600" size={24} />
+                      ) : processingStatus.stage === "error" ? (
+                        <AlertCircle className="text-red-600" size={24} />
+                      ) : (
+                        <Clock className="text-gray-600" size={24} />
+                      )}
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-2">
+                        <p
+                          className={`font-semibold ${
+                            processingStatus.stage === "complete"
+                              ? "text-green-800"
+                              : processingStatus.stage === "error"
+                              ? "text-red-800"
+                              : "text-blue-800"
+                          }`}
+                        >
+                          {processingStatus.stage === "complete"
+                            ? "Document Processed Successfully"
+                            : processingStatus.stage === "error"
+                            ? "Processing Failed"
+                            : "Processing Document..."}
+                        </p>
+                        {processingStatus.isProcessing && (
+                          <span className="text-sm font-medium text-blue-600">
+                            {processingStatus.progress}%
+                          </span>
+                        )}
+                      </div>
+
+                      <p
+                        className={`text-sm mb-3 ${
+                          processingStatus.stage === "complete"
+                            ? "text-green-600"
+                            : processingStatus.stage === "error"
+                            ? "text-red-600"
+                            : "text-blue-600"
+                        }`}
+                      >
+                        {processingStatus.message}
+                      </p>
+
+                      {/* Progress Bar */}
+                      {(processingStatus.isProcessing ||
+                        processingStatus.stage === "complete") && (
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-300 ${getProgressColor(
+                              processingStatus.stage
+                            )}`}
+                            style={{ width: `${processingStatus.progress}%` }}
+                          />
+                        </div>
+                      )}
+
+                      {/* Confidence Score */}
+                      {extractedData?.confidence && (
+                        <div className="mt-3 flex items-center space-x-2">
+                          <Target size={16} className="text-green-600" />
+                          <span className="text-sm text-green-700">
+                            Extraction Confidence:{" "}
+                            {Math.round(extractedData.confidence * 100)}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowFullForm(true)}
+                    disabled={!extractedData}
+                    className={`flex-1 flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-colors ${
+                      extractedData
+                        ? "bg-purple-600 text-white hover:bg-purple-700"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    }`}
+                  >
+                    <Settings className="mr-2" size={16} />
+                    Edit Details
+                  </button>
+                  <button
+                    onClick={() => window.print()}
+                    className="px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center font-medium"
+                  >
+                    <Download className="mr-2" size={16} />
+                    Export
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Block 2: Auto-filled Form */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center">
+                <Brain className="mr-3 text-purple-600" size={28} />
+                Extracted Report Data
+              </h2>
+              {extractedData && (
+                <div className="text-sm text-green-600 flex items-center bg-green-50 px-3 py-1 rounded-full">
+                  <CheckCircle className="mr-2" size={16} />
+                  Auto-filled from scan
+                </div>
+              )}
+            </div>
+
+            {!extractedData ? (
+              /* Waiting State */
+              <div className="text-center py-16">
+                <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Brain className="text-gray-400" size={32} />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                  Waiting for Document
+                </h3>
+                <p className="text-gray-500">
+                  Upload a document to automatically extract and populate report
+                  data
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {!showFullForm ? (
+                  /* Summary View */
+                  <div className="space-y-6 max-h-96 overflow-y-auto">
+                    {/* Patient Information Summary */}
+                    <div className="bg-blue-50 p-5 rounded-xl border border-blue-200">
+                      <div className="flex items-center mb-3">
+                        <User className="mr-2 text-blue-600" size={20} />
+                        <h3 className="font-semibold text-blue-900">
+                          Patient Information
+                        </h3>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="text-gray-600">Name:</span>
+                          <p className="font-medium">
+                            {formData.patientInfo.name || "Not specified"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">File #:</span>
+                          <p className="font-medium">
+                            {formData.patientInfo.fileNumber || "Not specified"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Age:</span>
+                          <p className="font-medium">
+                            {formData.patientInfo.age || "Not specified"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Gender:</span>
+                          <p className="font-medium">
+                            {formData.patientInfo.gender}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Facility Information Summary */}
+                    <div className="bg-green-50 p-5 rounded-xl border border-green-200">
+                      <div className="flex items-center mb-3">
+                        <Building className="mr-2 text-green-600" size={20} />
+                        <h3 className="font-semibold text-green-900">
+                          Facility Information
+                        </h3>
+                      </div>
+                      <div className="text-sm">
+                        <div className="mb-2">
+                          <span className="text-gray-600">Name:</span>
+                          <p className="font-medium">
+                            {formData.facilityInfo.name || "Not specified"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Address:</span>
+                          <p className="font-medium">
+                            {formData.facilityInfo.address || "Not specified"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Examination Summary */}
+                    <div className="bg-yellow-50 p-5 rounded-xl border border-yellow-200">
+                      <div className="flex items-center mb-3">
+                        <Stethoscope
+                          className="mr-2 text-yellow-600"
+                          size={20}
+                        />
+                        <h3 className="font-semibold text-yellow-900">
+                          Examination Details
+                        </h3>
+                      </div>
+                      <div className="text-sm space-y-2">
+                        <div>
+                          <span className="text-gray-600">Type:</span>
+                          <p className="font-medium">
+                            {formData.examination.examType || "Not specified"}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-gray-600">Doctor:</span>
+                          <p className="font-medium">
+                            {formData.examination.reportingDoctor ||
+                              "Not specified"}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <span className="text-gray-600">Study Date:</span>
+                            <p className="font-medium">
+                              {formData.examination.studyDate ||
+                                "Not specified"}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Report Date:</span>
+                            <p className="font-medium">
+                              {formData.examination.reportDate ||
+                                "Not specified"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Findings Summary */}
+                    <div className="bg-purple-50 p-5 rounded-xl border border-purple-200">
+                      <div className="flex items-center mb-3">
+                        <Activity className="mr-2 text-purple-600" size={20} />
+                        <h3 className="font-semibold text-purple-900">
+                          Clinical Findings
+                        </h3>
+                      </div>
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <span className="text-gray-600 font-medium">
+                            Observations (
+                            {
+                              formData.findings.primaryObservations.filter(
+                                (obs) => obs.trim()
+                              ).length
+                            }
+                            ):
+                          </span>
+                          <div className="text-gray-700 bg-white p-3 rounded-lg border mt-1 max-h-20 overflow-y-auto">
+                            {formData.findings.primaryObservations
+                              .filter((obs) => obs.trim())
+                              .map((obs, index) => (
+                                <p key={index} className="mb-1">
+                                  • {obs}
+                                </p>
+                              )) || (
+                              <p className="text-gray-500 italic">
+                                No observations recorded
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-600 font-medium">
+                            Impressions (
+                            {
+                              formData.findings.impressions.filter((imp) =>
+                                imp.trim()
+                              ).length
+                            }
+                            ):
+                          </span>
+                          <div className="text-gray-700 bg-white p-3 rounded-lg border mt-1 max-h-20 overflow-y-auto">
+                            {formData.findings.impressions
+                              .filter((imp) => imp.trim())
+                              .map((imp, index) => (
+                                <p key={index} className="mb-1">
+                                  • {imp}
+                                </p>
+                              )) || (
+                              <p className="text-gray-500 italic">
+                                No impressions recorded
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Full Form View */
+                  <div className="space-y-6 max-h-96 overflow-y-auto">
+                    {/* Patient Information Form */}
+                    <div className="bg-blue-50 p-5 rounded-xl border border-blue-200">
+                      <h3 className="font-semibold text-blue-900 mb-3 flex items-center">
+                        <User className="mr-2" size={18} />
+                        Patient Information
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          className="p-2 border border-gray-300 rounded-lg text-sm"
+                          type="text"
+                          placeholder="Patient Name"
+                          value={formData.patientInfo.name}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "patientInfo",
+                              "name",
+                              e.target.value
+                            )
+                          }
+                        />
+                        <input
+                          className="p-2 border border-gray-300 rounded-lg text-sm"
+                          type="text"
+                          placeholder="File Number"
+                          value={formData.patientInfo.fileNumber}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "patientInfo",
+                              "fileNumber",
+                              e.target.value
+                            )
+                          }
+                        />
+                        <input
+                          className="p-2 border border-gray-300 rounded-lg text-sm"
+                          type="number"
+                          placeholder="Age"
+                          value={formData.patientInfo.age || ""}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "patientInfo",
+                              "age",
+                              parseInt(e.target.value) || 0
+                            )
+                          }
+                        />
+                        <select
+                          className="p-2 border border-gray-300 rounded-lg text-sm"
+                          value={formData.patientInfo.gender}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "patientInfo",
+                              "gender",
+                              e.target.value
+                            )
+                          }
+                        >
+                          <option value="Female">Female</option>
+                          <option value="Male">Male</option>
+                          <option value="Other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Facility Information Form */}
+                    <div className="bg-green-50 p-5 rounded-xl border border-green-200">
+                      <h3 className="font-semibold text-green-900 mb-3 flex items-center">
+                        <Building className="mr-2" size={18} />
+                        Facility Information
+                      </h3>
+                      <input
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm mb-3"
+                        type="text"
+                        placeholder="Facility Name"
+                        value={formData.facilityInfo.name}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "facilityInfo",
+                            "name",
+                            e.target.value
+                          )
+                        }
+                      />
+                      <textarea
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                        placeholder="Address"
+                        value={formData.facilityInfo.address}
+                        onChange={(e) =>
+                          handleInputChange(
+                            "facilityInfo",
+                            "address",
+                            e.target.value
+                          )
+                        }
+                        rows={2}
+                      />
+                    </div>
+
+                    {/* Examination Details Form */}
+                    <div className="bg-yellow-50 p-5 rounded-xl border border-yellow-200">
+                      <h3 className="font-semibold text-yellow-900 mb-3 flex items-center">
+                        <Stethoscope className="mr-2" size={18} />
+                        Examination Details
+                      </h3>
+                      <div className="space-y-3">
+                        <input
+                          className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                          type="text"
+                          placeholder="Exam Type"
+                          value={formData.examination.examType}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "examination",
+                              "examType",
+                              e.target.value
+                            )
+                          }
+                        />
+                        <input
+                          className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                          type="text"
+                          placeholder="Reporting Doctor"
+                          value={formData.examination.reportingDoctor}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "examination",
+                              "reportingDoctor",
+                              e.target.value
+                            )
+                          }
+                        />
+                        <div className="grid grid-cols-2 gap-3">
+                          <input
+                            className="p-2 border border-gray-300 rounded-lg text-sm"
+                            type="date"
+                            value={formData.examination.studyDate}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "examination",
+                                "studyDate",
+                                e.target.value
+                              )
+                            }
+                          />
+                          <input
+                            className="p-2 border border-gray-300 rounded-lg text-sm"
+                            type="date"
+                            value={formData.examination.reportDate}
+                            onChange={(e) =>
+                              handleInputChange(
+                                "examination",
+                                "reportDate",
+                                e.target.value
+                              )
+                            }
+                          />
+                        </div>
+                        <textarea
+                          className="w-full p-2 border border-gray-300 rounded-lg text-sm"
+                          placeholder="Clinical Indication"
+                          value={formData.examination.clinicalIndication}
+                          onChange={(e) =>
+                            handleInputChange(
+                              "examination",
+                              "clinicalIndication",
+                              e.target.value
+                            )
+                          }
+                          rows={2}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Findings Form */}
+                    <div className="bg-purple-50 p-5 rounded-xl border border-purple-200">
+                      <h3 className="font-semibold text-purple-900 mb-3 flex items-center">
+                        <Activity className="mr-2" size={18} />
+                        Clinical Findings
+                      </h3>
+
+                      {/* Observations */}
+                      <div className="mb-4">
+                        <h4 className="font-medium text-gray-700 mb-2 flex items-center">
+                          <Eye className="mr-1" size={14} />
+                          Primary Observations
+                        </h4>
+                        {formData.findings.primaryObservations.map(
+                          (obs, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-2 mb-2"
+                            >
+                              <input
+                                className="flex-1 p-2 border border-gray-300 rounded-lg text-sm"
+                                type="text"
+                                value={obs}
+                                onChange={(e) =>
+                                  handleArrayChange(
+                                    "findings",
+                                    "primaryObservations",
+                                    index,
+                                    e.target.value
+                                  )
+                                }
+                                placeholder={`Observation ${index + 1}`}
+                              />
+                              {formData.findings.primaryObservations.length >
+                                1 && (
+                                <button
+                                  onClick={() =>
+                                    removeArrayItem(
+                                      "findings",
+                                      "primaryObservations",
+                                      index
+                                    )
+                                  }
+                                  className="text-red-500 hover:text-red-700 p-1"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          )
+                        )}
+                        <button
+                          onClick={() =>
+                            addArrayItem("findings", "primaryObservations")
+                          }
+                          className="text-purple-600 hover:text-purple-800 flex items-center text-sm font-medium"
+                        >
+                          <Plus size={14} className="mr-1" />
+                          Add Observation
+                        </button>
+                      </div>
+
+                      {/* Impressions */}
+                      <div className="mb-4">
+                        <h4 className="font-medium text-gray-700 mb-2 flex items-center">
+                          <Brain className="mr-1" size={14} />
+                          Clinical Impressions
+                        </h4>
+                        {formData.findings.impressions.map((imp, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 mb-2"
+                          >
+                            <input
+                              className="flex-1 p-2 border border-gray-300 rounded-lg text-sm"
+                              type="text"
+                              value={imp}
+                              onChange={(e) =>
+                                handleArrayChange(
+                                  "findings",
+                                  "impressions",
+                                  index,
+                                  e.target.value
+                                )
+                              }
+                              placeholder={`Impression ${index + 1}`}
+                            />
+                            {formData.findings.impressions.length > 1 && (
+                              <button
+                                onClick={() =>
+                                  removeArrayItem(
+                                    "findings",
+                                    "impressions",
+                                    index
+                                  )
+                                }
+                                className="text-red-500 hover:text-red-700 p-1"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          onClick={() =>
+                            addArrayItem("findings", "impressions")
+                          }
+                          className="text-purple-600 hover:text-purple-800 flex items-center text-sm font-medium"
+                        >
+                          <Plus size={14} className="mr-1" />
+                          Add Impression
+                        </button>
+                      </div>
+
+                      {/* Recommendations */}
+                      <div>
+                        <h4 className="font-medium text-gray-700 mb-2 flex items-center">
+                          <Target className="mr-1" size={14} />
+                          Recommendations
+                        </h4>
+                        {formData.findings.recommendations.map((rec, index) => (
+                          <div
+                            key={index}
+                            className="flex items-center gap-2 mb-2"
+                          >
+                            <input
+                              className="flex-1 p-2 border border-gray-300 rounded-lg text-sm"
+                              type="text"
+                              value={rec}
+                              onChange={(e) =>
+                                handleArrayChange(
+                                  "findings",
+                                  "recommendations",
+                                  index,
+                                  e.target.value
+                                )
+                              }
+                              placeholder={`Recommendation ${index + 1}`}
+                            />
+                            {formData.findings.recommendations.length > 1 && (
+                              <button
+                                onClick={() =>
+                                  removeArrayItem(
+                                    "findings",
+                                    "recommendations",
+                                    index
+                                  )
+                                }
+                                className="text-red-500 hover:text-red-700 p-1"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        <button
+                          onClick={() =>
+                            addArrayItem("findings", "recommendations")
+                          }
+                          className="text-purple-600 hover:text-purple-800 flex items-center text-sm font-medium"
+                        >
+                          <Plus size={14} className="mr-1" />
+                          Add Recommendation
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  {showFullForm && (
+                    <button
+                      onClick={() => setShowFullForm(false)}
+                      className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 flex items-center font-medium"
+                    >
+                      <Eye className="mr-2" size={16} />
+                      Summary View
+                    </button>
+                  )}
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || !uploadedFile}
+                    className={`flex-1 flex items-center justify-center px-4 py-3 rounded-lg font-medium transition-colors ${
+                      isSubmitting || !uploadedFile
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-blue-600 text-white hover:bg-blue-700"
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader className="animate-spin mr-2" size={16} />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2" size={16} />
+                        Save Report
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Info Footer */}
+        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-6">
+          <div className="flex items-start space-x-3">
+            <Info className="text-blue-600 mt-1" size={20} />
+            <div>
+              <h3 className="font-semibold text-blue-900 mb-2">How it works</h3>
+              <div className="text-blue-700 text-sm space-y-1">
+                <p>
+                  1. <strong>Upload:</strong> Drop your radiology report
+                  document (PDF, Word, or image)
+                </p>
+                <p>
+                  2. <strong>Process:</strong> AI extracts text and identifies
+                  key medical information
+                </p>
+                <p>
+                  3. <strong>Structure:</strong> Data is automatically organized
+                  into standardized fields
+                </p>
+                <p>
+                  4. <strong>Review:</strong> Edit and verify the extracted
+                  information
+                </p>
+                <p>
+                  5. <strong>Save:</strong> Store the digitized report in your
+                  system
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ReportUpload;
