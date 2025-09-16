@@ -720,6 +720,30 @@ export default function DocumentUploadSystem({
     }
   };
 
+  // Unified save and upload handler
+  const handleSaveAndUploadAll = () => {
+    if (!extractedPatientName || !extractedReportType || !extractedDate) {
+      setDocumentState((prev) => ({
+        ...prev,
+        error: "Please ensure Patient Name, Report Type, and Date are extracted/filled",
+      }));
+      return;
+    }
+    if (firmState.files.length === 0) {
+      setFirmState((prev) => ({
+        ...prev,
+        error: "Please select at least one image to upload.",
+      }));
+      return;
+    }
+
+    handleSaveDocument();
+    handleSaveFirmImages();
+
+    setDocumentState((prev) => ({ ...prev, saved: true, error: null }));
+    setFirmState((prev) => ({ ...prev, saved: true, error: null }));
+  };
+
   // Formatted Text Display Component (unchanged)
   const FormattedTextDisplay = ({ formattedData }: { formattedData: any }) => {
     if (!formattedData) return null;
@@ -926,7 +950,6 @@ export default function DocumentUploadSystem({
                     margin: "4px 0 0 0",
                   }}
                 >
-                  Auto-extract patient name, report type, department, and date
                 </p>
               </div>
             </div>
@@ -1334,61 +1357,6 @@ export default function DocumentUploadSystem({
               />
             )}
 
-            {/* Save Document Button */}
-            {documentState.text && !documentState.saved && (
-              <button
-                onClick={handleSaveDocument}
-                disabled={
-                  !extractedPatientName ||
-                  !extractedReportType ||
-                  !extractedDate
-                }
-                style={{
-                  width: "100%",
-                  marginTop: "12px",
-                  backgroundColor:
-                    !extractedPatientName ||
-                    !extractedReportType ||
-                    !extractedDate
-                      ? "#9ca3af"
-                      : "#059669",
-                  color: "white",
-                  padding: "12px 16px",
-                  borderRadius: "6px",
-                  fontWeight: "500",
-                  fontSize: "14px",
-                  border: "none",
-                  cursor:
-                    !extractedPatientName ||
-                    !extractedReportType ||
-                    !extractedDate
-                      ? "not-allowed"
-                      : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  transition: "background-color 0.3s ease",
-                  opacity:
-                    !extractedPatientName ||
-                    !extractedReportType ||
-                    !extractedDate
-                      ? 0.6
-                      : 1,
-                }}
-              >
-                <Save size={16} />
-                Save Document
-                {(!extractedPatientName ||
-                  !extractedReportType ||
-                  !extractedDate) && (
-                  <span style={{ fontSize: "12px", marginLeft: "4px" }}>
-                    (Fill required fields)
-                  </span>
-                )}
-              </button>
-            )}
-
             {/* View Details Button */}
             {documentState.saved && documentState.savedReportId && (
               <button
@@ -1498,7 +1466,6 @@ export default function DocumentUploadSystem({
                     margin: "4px 0 0 0",
                   }}
                 >
-                  Upload multiple images (at least 5 at a time)
                 </p>
               </div>
             </div>
@@ -1613,9 +1580,6 @@ export default function DocumentUploadSystem({
                   border: "1px solid #e5e7eb",
                 }}
               >
-                <p style={{ margin: "0", fontSize: "14px", color: "#374151" }}>
-                  <strong>Selected Images:</strong> {firmState.files.length}
-                </p>
                 <p
                   style={{
                     margin: "4px 0 0 0",
@@ -1646,12 +1610,10 @@ export default function DocumentUploadSystem({
                   {firmState.files.length >= 5 ? (
                     <>
                       <CheckCircle2 size={14} />
-                      Ready to upload - {firmState.files.length} images selected
                     </>
                   ) : (
                     <>
                       <XCircle size={14} />
-                      Need at least 5 images - {firmState.files.length} selected
                     </>
                   )}
                 </div>
@@ -1723,42 +1685,6 @@ export default function DocumentUploadSystem({
               </div>
             )}
 
-            {/* Save Images Button */}
-            {firmState.files.length > 0 && !firmState.saved && (
-              <button
-                onClick={handleSaveFirmImages}
-                disabled={firmState.files.length < 5}
-                style={{
-                  width: "100%",
-                  marginTop: "12px",
-                  backgroundColor:
-                    firmState.files.length < 5 ? "#9ca3af" : "#7c3aed",
-                  color: "white",
-                  padding: "12px 16px",
-                  borderRadius: "6px",
-                  fontWeight: "500",
-                  fontSize: "14px",
-                  border: "none",
-                  cursor:
-                    firmState.files.length < 5 ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  transition: "background-color 0.3s ease",
-                  opacity: firmState.files.length < 5 ? 0.6 : 1,
-                }}
-              >
-                <Save size={16} />
-                Upload {firmState.files.length} Images
-                {firmState.files.length < 5 && (
-                  <span style={{ fontSize: "12px", marginLeft: "4px" }}>
-                    (Need at least 5)
-                  </span>
-                )}
-              </button>
-            )}
-
             {/* Error Display */}
             {firmState.error && (
               <div
@@ -1803,219 +1729,79 @@ export default function DocumentUploadSystem({
           </div>
         </div>
 
+        {/* Unified Save & Upload Button */}
+        {(documentState.text || firmState.files.length > 0) && (
+          <div
+            style={{
+              marginTop: "24px",
+              textAlign: "center",
+              maxWidth: "900px",
+              marginLeft: "auto",
+              marginRight: "auto",
+            }}
+          >
+            <button
+              onClick={handleSaveAndUploadAll}
+              disabled={
+                !extractedPatientName ||
+                !extractedReportType ||
+                !extractedDate ||
+                firmState.files.length === 0
+              }
+              style={{
+                width: "100%",
+                marginTop: "12px",
+                backgroundColor:
+                  !extractedPatientName ||
+                  !extractedReportType ||
+                  !extractedDate ||
+                  firmState.files.length === 0
+                    ? "#9ca3af"
+                    : "#6b21a8",
+                color: "white",
+                padding: "12px 16px",
+                borderRadius: "6px",
+                fontWeight: "500",
+                fontSize: "14px",
+                border: "none",
+                cursor:
+                  !extractedPatientName ||
+                  !extractedReportType ||
+                  !extractedDate ||
+                  firmState.files.length === 0
+                    ? "not-allowed"
+                    : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                transition: "background-color 0.3s ease",
+                opacity:
+                  !extractedPatientName ||
+                  !extractedReportType ||
+                  !extractedDate ||
+                  firmState.files.length === 0
+                    ? 0.6
+                    : 1,
+              }}
+            >
+              <Save size={16} />
+              Save & Upload All
+              {(!extractedPatientName ||
+                !extractedReportType ||
+                !extractedDate ||
+                firmState.files.length === 0) && (
+                <span style={{ fontSize: "12px", marginLeft: "4px" }}>
+                  (Fill required fields or upload images)
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Saved Reports Preview Table */}
         {savedReports.length > 0 && (
           <div style={{ marginTop: "32px" }}>
-            <h2
-              style={{
-                fontSize: "24px",
-                fontWeight: "600",
-                color: "#1f2937",
-                marginBottom: "16px",
-                textAlign: "center",
-              }}
-            >
-              Saved Medical Reports
-            </h2>
-            <div style={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  backgroundColor: "white",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                  boxShadow:
-                    "0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)",
-                }}
-              >
-                <thead>
-                  <tr style={{ backgroundColor: "#f9fafb" }}>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontWeight: "600",
-                        color: "#374151",
-                        borderBottom: "1px solid #e5e7eb",
-                      }}
-                    >
-                      S.No.
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontWeight: "600",
-                        color: "#374151",
-                        borderBottom: "1px solid #e5e7eb",
-                      }}
-                    >
-                      Patient Name
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontWeight: "600",
-                        color: "#374151",
-                        borderBottom: "1px solid #e5e7eb",
-                      }}
-                    >
-                      Department
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontWeight: "600",
-                        color: "#374151",
-                        borderBottom: "1px solid #e5e7eb",
-                      }}
-                    >
-                      Report Type
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontWeight: "600",
-                        color: "#374151",
-                        borderBottom: "1px solid #e5e7eb",
-                      }}
-                    >
-                      Report Date
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontWeight: "600",
-                        color: "#374151",
-                        borderBottom: "1px solid #e5e7eb",
-                      }}
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {savedReports.map((report, index) => (
-                    <tr
-                      key={report.id}
-                      style={{
-                        borderBottom:
-                          "1px solid " +
-                          (index % 2 === 0 ? "#f3f4f6" : "#e5e7eb"),
-                        backgroundColor: index % 2 === 0 ? "white" : "#fafbfc",
-                      }}
-                    >
-                      <td
-                        style={{
-                          padding: "12px 16px",
-                          color: "#6b7280",
-                          fontWeight: "500",
-                        }}
-                      >
-                        #{report.serialNumber}
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 16px",
-                          color: "#374151",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "8px",
-                          }}
-                        >
-                          <User size={16} style={{ color: "#6b7280" }} />
-                          {report.patientName}
-                        </div>
-                      </td>
-                      <td style={{ padding: "12px 16px", color: "#4b5563" }}>
-                        <span
-                          style={{
-                            backgroundColor: "#dbeafe",
-                            color: "#1e40af",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            fontWeight: "500",
-                          }}
-                        >
-                          {report.department}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 16px", color: "#4b5563" }}>
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                          }}
-                        >
-                          <ClipboardList
-                            size={14}
-                            style={{ color: "#6b7280" }}
-                          />
-                          {report.reportType}
-                        </div>
-                      </td>
-                      <td
-                        style={{
-                          padding: "12px 16px",
-                          color: "#4b5563",
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                          }}
-                        >
-                          <Calendar size={14} style={{ color: "#6b7280" }} />
-                          {new Date(report.date).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <button
-                          onClick={() =>
-                            onViewReportDetails && onViewReportDetails(report)
-                          }
-                          style={{
-                            backgroundColor: "#3b82f6",
-                            color: "white",
-                            padding: "6px 12px",
-                            borderRadius: "4px",
-                            fontSize: "12px",
-                            fontWeight: "500",
-                            border: "none",
-                            cursor: "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            transition: "background-color 0.2s ease",
-                          }}
-                          onMouseOver={(e) => {
-                            e.currentTarget.style.backgroundColor = "#2563eb";
-                          }}
-                          onMouseOut={(e) => {
-                            e.currentTarget.style.backgroundColor = "#3b82f6";
-                          }}
-                        >
-                          <Eye size={14} />
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
           </div>
         )}
       </div>
