@@ -1,26 +1,11 @@
-;import React, { useState } from "react";
+import React, { useState } from "react";
 import { ArrowLeft, Search, Eye, FileImage } from "lucide-react";
 
-interface Patient {
-  id: string;
-  name: string;
-  number: string;
-}
-
-interface Report {
-  id: string;
-  patientId: string;
-  department: string;
-  reportType: string;
-  uploadedAt: string;
-  uploadedBy: string;
-  reportText: string;
-  reportUrl?: string;
-}
+import type { Patient, Report } from "../types";  // Import shared types
 
 interface ReportsListingProps {
   patients: Patient[];
-  reports: Report[];
+  reports: Report[];  // Use shared Report
   initialDepartmentFilter?: string;
   onBackToDepartments?: () => void;
 }
@@ -31,25 +16,25 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
   initialDepartmentFilter = "",
   onBackToDepartments,
 }) => {
-  const [selectedDepartment] = useState<string>(initialDepartmentFilter);
+  const [selectedDepartment] = useState<string>(initialDepartmentFilter.toLowerCase());  // Normalize to lowercase for matching
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [filteredReports, setFilteredReports] = useState(reports);
 
   const handleSearch = () => {
     let filtered = reports.filter((report) =>
-      selectedDepartment ? report.department === selectedDepartment : true
+      selectedDepartment ? report.department.toLowerCase() === selectedDepartment.toLowerCase() : true
     );
 
     if (fromDate) {
       filtered = filtered.filter(
-        (report) => new Date(report.uploadedAt) >= new Date(fromDate)
+        (report) => new Date(report.date || report.uploadedAt) >= new Date(fromDate)  // Use date if available, fallback to uploadedAt
       );
     }
 
     if (toDate) {
       filtered = filtered.filter(
-        (report) => new Date(report.uploadedAt) <= new Date(toDate)
+        (report) => new Date(report.date || report.uploadedAt) <= new Date(toDate)
       );
     }
 
@@ -61,7 +46,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
     setToDate("");
     setFilteredReports(
       reports.filter((report) =>
-        selectedDepartment ? report.department === selectedDepartment : true
+        selectedDepartment ? report.department.toLowerCase() === selectedDepartment.toLowerCase() : true
       )
     );
   };
@@ -374,7 +359,7 @@ const ReportsListing: React.FC<ReportsListingProps> = ({
               <tbody className="table-body">
                 {filteredReports.map((report, index) => (
                   <tr key={report.id}>
-                    <td>{index + 1}</td>
+                    <td>{report.serialNumber || index + 1}</td>  {/* Use serialNumber if available */}
                     <td>
                       <div className="action-buttons">
                         <button

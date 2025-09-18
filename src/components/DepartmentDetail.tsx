@@ -1,24 +1,15 @@
 "use client";
 
-import React, { useState } from "react";
-import { Search, Eye, ImageIcon, ArrowLeft } from "lucide-react";
-
-interface Report {
-  id: string;
-  serialNumber: number;
-  patient: string;
-  department: string;
-  reportType: string;
-  date: string;
-  doctor: string;
-  uploadedAt: string;
-}
+import React, { useState, useMemo } from "react";
+import { Search, Eye, ImageIcon, ArrowLeft, X } from "lucide-react";
+import type { Report } from "../types";
 
 interface DepartmentDetailProps {
   department: string;
   onBack: () => void;
   onViewDetails: (report: Report) => void;
   onFirmView: (report: Report) => void;
+  reports: Report[];
 }
 
 const DepartmentDetail: React.FC<DepartmentDetailProps> = ({
@@ -26,61 +17,69 @@ const DepartmentDetail: React.FC<DepartmentDetailProps> = ({
   onBack,
   onViewDetails,
   onFirmView,
+  reports = [], // Default to empty array for safety
 }) => {
   const [searchName, setSearchName] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
 
-  // Mock data - replace with actual API call
-  const mockReports: Report[] = [
-    {
-      id: "1",
-      serialNumber: 1,
-      patient: "John Doe",
-      department: department.toUpperCase(),
-      reportType: `${department.toUpperCase()} Report`,
-      date: "2024-01-15",
-      doctor: "Dr. Smith",
-      uploadedAt: "2024-01-15T10:30:00Z",
-    },
-    {
-      id: "2",
-      serialNumber: 2,
-      patient: "Jane Smith",
-      department: department.toUpperCase(),
-      reportType: `${department.toUpperCase()} Report`,
-      date: "2024-01-14",
-      doctor: "Dr. Johnson",
-      uploadedAt: "2024-01-14T14:20:00Z",
-    },
-    {
-      id: "3",
-      serialNumber: 3,
-      patient: "Mike Wilson",
-      department: department.toUpperCase(),
-      reportType: `${department.toUpperCase()} Report`,
-      date: "2024-01-13",
-      doctor: "Dr. Brown",
-      uploadedAt: "2024-01-13T09:15:00Z",
-    },
-  ];
+  // Helper function for safe string matching (prevents toLowerCase() on undefined)
+  const safeIncludes = (str: string | undefined | null, searchTerm: string): boolean => {
+    if (!str || !searchTerm) return false;
+    return str.toLowerCase().includes(searchTerm.toLowerCase());
+  };
 
-  // Filter and sort reports (LIFO - latest first)
-  const filteredReports = mockReports
-    .filter((report) => {
-      const matchesName =
-        !searchName ||
-        report.patient.toLowerCase().includes(searchName.toLowerCase());
-      const matchesFromDate =
-        !fromDate || new Date(report.date) >= new Date(fromDate);
-      const matchesToDate =
-        !toDate || new Date(report.date) <= new Date(toDate);
-      return matchesName && matchesFromDate && matchesToDate;
-    })
-    .sort(
-      (a, b) =>
-        new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
-    );
+  // Clear filters function (moved outside filter)
+  const clearFilters = () => {
+    setSearchName("");
+    setFromDate("");
+    setToDate("");
+  };
+
+  // Temporary log - remove after testing
+  console.log(`Department: ${department}, Total reports: ${reports.length}`);
+
+  const filteredReports = useMemo(() => {
+    if (!reports || !Array.isArray(reports)) return [];
+
+    return reports
+      .filter((r) => {
+        // Safe department filter
+        return r.department && r.department.toLowerCase() === department.toLowerCase();
+      })
+      .filter((report) => {
+        // Safe name filter
+        const matchesName = !searchName || safeIncludes(report.patient, searchName);
+
+        // Safe date filters with try-catch
+        const matchesFromDate = !fromDate || (() => {
+          try {
+            return new Date(report.date) >= new Date(fromDate);
+          } catch {
+            return false; // Invalid date: exclude
+          }
+        })();
+        
+        const matchesToDate = !toDate || (() => {
+          try {
+            return new Date(report.date) <= new Date(toDate);
+          } catch {
+            return false; // Invalid date: exclude
+          }
+        })();
+
+        return matchesName && matchesFromDate && matchesToDate;
+      })
+      .sort((a, b) => {
+        try {
+          return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+        } catch {
+          return 0; // If dates invalid, no sorting change
+        }
+      });
+  }, [reports, department, searchName, fromDate, toDate]);
+
+  console.log(`Dept-specific reports: ${filteredReports.length}`); // Updated log
 
   const getDepartmentName = (dept: string) => {
     const names: { [key: string]: string } = {
@@ -95,7 +94,6 @@ const DepartmentDetail: React.FC<DepartmentDetailProps> = ({
       xray: "X-Ray",
       tmt: "TMT",
       holter: "Holter",
-
       // New departments
       biopsy: "Biopsy",
       dialysis: "Dialysis",
@@ -109,6 +107,8 @@ const DepartmentDetail: React.FC<DepartmentDetailProps> = ({
     };
     return names[dept.toLowerCase()] || dept.toUpperCase();
   };
+
+  const hasActiveFilters = searchName || fromDate || toDate;
 
   return (
     <div className="department-detail">
@@ -211,6 +211,25 @@ const DepartmentDetail: React.FC<DepartmentDetailProps> = ({
           background: #2563eb;
         }
 
+        .clear-button {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          padding: 0.75rem 1.5rem;
+          background: #6b7280;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.875rem;
+          font-weight: 600;
+          transition: background 0.2s;
+        }
+
+        .clear-button:hover {
+          background: #4b5563;
+        }
+
         /* Table section matching the image layout */
         .table-section {
           background: white;
@@ -308,6 +327,12 @@ const DepartmentDetail: React.FC<DepartmentDetailProps> = ({
           background: #ecfdf5;
         }
 
+        .no-reports {
+          text-align: center;
+          padding: 2rem;
+          color: #6b7280;
+        }
+
         /* Responsive design */
         @media (max-width: 768px) {
           .department-detail {
@@ -337,7 +362,7 @@ const DepartmentDetail: React.FC<DepartmentDetailProps> = ({
       <div className="detail-header">
         <button className="back-button" onClick={onBack}>
           <ArrowLeft size={16} />
-          Back to Departments
+          Back
         </button>
         <h1 className="detail-title">
           {getDepartmentName(department)} Reports
@@ -374,63 +399,77 @@ const DepartmentDetail: React.FC<DepartmentDetailProps> = ({
               onChange={(e) => setToDate(e.target.value)}
             />
           </div>
-          <button className="search-button">
-            <Search size={16} />
-            Search
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button className="search-button" onClick={() => { /* Real-time filtering, so this can be a no-op or force refresh */ }}>
+              <Search size={16} />
+              Search
+            </button>
+            {hasActiveFilters && (
+              <button className="clear-button" onClick={clearFilters}>
+                <X size={16} />
+                Clear
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       <div className="table-section">
         <div className="table-container">
-          <table className="reports-table">
-            <thead className="table-header">
-              <tr>
-                <th>S.N</th>
-                <th>Patient</th>
-                <th>Department</th>
-                <th>Report Type</th>
-                <th>Date</th>
-                <th>View Details</th>
-                <th>Firm Viewing</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredReports.map((report) => (
-                <tr key={report.id} className="table-row">
-                  <td className="table-cell">{report.serialNumber}</td>
-                  <td className="table-cell">{report.patient}</td>
-                  <td className="table-cell">{report.department}</td>
-                  <td className="table-cell">{report.reportType}</td>
-                  <td className="table-cell">
-                    {new Date(report.date).toLocaleDateString()}
-                  </td>
-                  <td className="table-cell">
-                    <div className="action-buttons">
-                      <button
-                        className="action-button view-details"
-                        onClick={() => onViewDetails(report)}
-                      >
-                        <Eye size={14} />
-                        View Details
-                      </button>
-                    </div>
-                  </td>
-                  <td className="table-cell">
-                    <div className="action-buttons">
-                      <button
-                        className="action-button firm-view"
-                        onClick={() => onFirmView(report)}
-                      >
-                        <ImageIcon size={14} />
-                        Firm View
-                      </button>
-                    </div>
-                  </td>
+          {filteredReports.length === 0 ? (
+            <div className="no-reports">
+              No reports found matching the criteria.
+            </div>
+          ) : (
+            <table className="reports-table">
+              <thead className="table-header">
+                <tr>
+                  <th>S.N</th>
+                  <th>Patient</th>
+                  <th>Department</th>
+                  <th>Report Type</th>
+                  <th>Date</th>
+                  <th>View Details</th>
+                  <th>Firm Viewing</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredReports.map((report, index) => (
+                  <tr key={report.id} className="table-row">
+                    <td className="table-cell">{report.serialNumber || index + 1}</td>
+                    <td className="table-cell">{report.patient || "Unknown Patient"}</td>
+                    <td className="table-cell">{getDepartmentName(report.department || "")}</td>
+                    <td className="table-cell">{report.reportType || "Unknown"}</td>
+                    <td className="table-cell">
+                      {report.date ? new Date(report.date).toLocaleDateString() : "Unknown Date"}
+                    </td>
+                    <td className="table-cell">
+                      <div className="action-buttons">
+                        <button
+                          className="action-button view-details"
+                          onClick={() => onViewDetails(report)}
+                        >
+                          <Eye size={14} />
+                          View Details
+                        </button>
+                      </div>
+                    </td>
+                    <td className="table-cell">
+                      <div className="action-buttons">
+                        <button
+                          className="action-button firm-view"
+                          onClick={() => onFirmView(report)}
+                        >
+                          <ImageIcon size={14} />
+                          Firm View
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>

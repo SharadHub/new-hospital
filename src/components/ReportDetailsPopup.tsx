@@ -1,20 +1,9 @@
 "use client";
 
 import type React from "react";
-import { X, Printer, User, FileText, Image, CheckCircle } from "lucide-react";
+import { X, Printer, User, FileText, Image as ImageIcon, CheckCircle } from "lucide-react";
 
-interface Report {
-  id: string;
-  serialNumber: number;
-  patient: string;
-  department: string;
-  reportType: string;
-  date: string;
-  doctor: string;
-  uploadedAt: string;
-  extractedText?: string;
-  imageUrl?: string;
-}
+import type { Report } from "../types";  // Use shared Report type
 
 interface ReportDetailsPopupProps {
   report: Report | null;
@@ -31,26 +20,6 @@ const ReportDetailsPopup: React.FC<ReportDetailsPopupProps> = ({
 
   const handlePrint = () => {
     window.print();
-  };
-
-  const reportDetails = {
-    referringDoctor: report.doctor,
-    reportDate: report.date,
-    studyDate: report.date,
-    findings:
-      report.extractedText ||
-      "The examination shows normal anatomical structures with no significant abnormalities detected.",
-    impression: report.extractedText
-      ? "Auto-scanned document content - please review extracted text above for detailed findings."
-      : "Normal study. No acute findings.",
-    recommendations: report.extractedText
-      ? "Please correlate with clinical findings and consider follow-up."
-      : "Follow-up as clinically indicated.",
-    technician: "Tech. Sarah Johnson",
-    reportedBy: report.doctor,
-    verifiedBy: "Dr. Michael Chen, MD",
-    hasUploadedDocument: !!report.extractedText,
-    uploadedImageUrl: report.imageUrl,
   };
 
   return (
@@ -102,6 +71,24 @@ const ReportDetailsPopup: React.FC<ReportDetailsPopupProps> = ({
               margin: 0;
             }
 
+            .close-btn {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              padding: 0.5rem 1rem;
+              background: #ef4444;
+              color: white;
+              border: none;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 0.875rem;
+              transition: background 0.2s;
+            }
+
+            .close-btn:hover {
+              background: #dc2626;
+            }
+
             .popup-body {
               padding: 2rem;
               flex: 1;
@@ -128,25 +115,58 @@ const ReportDetailsPopup: React.FC<ReportDetailsPopupProps> = ({
               margin: 0;
             }
 
-            .document-placeholder {
+            .patient-info {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin: 1rem 0;
+              padding: 1rem;
+              background: #f8fafc;
+              border-radius: 8px;
+            }
+
+            .info-item {
+              display: flex;
+              align-items: center;
+              gap: 0.5rem;
+              color: #374151;
+            }
+
+            .document-section {
+              margin: 2rem 0;
+              text-align: center;
+            }
+
+            .document-image {
+              max-width: 100%;
+              max-height: 400px;
+              border-radius: 8px;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+              margin: 1rem 0;
+            }
+
+            .no-image-placeholder {
               width: 100%;
               max-width: 400px;
               height: 200px;
               margin: 2rem auto;
-              border: 2px dashed #3b82f6;
+              border: 2px dashed #d1d5db;
               border-radius: 8px;
               display: flex;
+              flex-direction: column;
               align-items: center;
               justify-content: center;
-              color: #3b82f6;
-              font-weight: 600;
+              color: #6b7280;
+              font-weight: 500;
               font-size: 1rem;
             }
 
             .print-container {
               display: flex;
               justify-content: center;
-              margin-bottom: 2rem;
+              margin: 2rem;
+              padding-top: 1rem;
+              border-top: 1px solid #e2e8f0;
             }
 
             .print-btn {
@@ -170,32 +190,66 @@ const ReportDetailsPopup: React.FC<ReportDetailsPopupProps> = ({
 
             @media print {
               .popup-overlay {
-                position: static;
-                background: none;
-                padding: 0;
+                position: static !important;
+                background: none !important;
+                padding: 0 !important;
               }
 
               .popup-content {
-                box-shadow: none;
-                max-width: none;
-                max-height: none;
-                overflow: visible;
+                box-shadow: none !important;
+                max-width: none !important;
+                max-height: none !important;
+                overflow: visible !important;
               }
 
               .popup-header {
-                background: white;
-                border-bottom: 2px solid #000;
+                background: white !important;
+                border-bottom: 2px solid #000 !important;
+                -webkit-print-color-adjust: exact;
               }
 
+              .close-btn,
               .print-container {
-                display: none;
+                display: none !important;
+              }
+
+              .document-image {
+                max-height: none !important;
+                page-break-inside: avoid;
+              }
+
+              .patient-info {
+                background: #f8fafc !important;
+                -webkit-print-color-adjust: exact;
+              }
+            }
+
+            @media (max-width: 768px) {
+              .popup-content {
+                margin: 0;
+                max-height: 100vh;
+                border-radius: 0;
+              }
+
+              .popup-header {
+                padding: 1rem;
+              }
+
+              .popup-body {
+                padding: 1rem;
+              }
+
+              .patient-info {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: flex-start;
               }
             }
           `}</style>
 
           <div className="popup-header">
-            <h2 className="popup-title">Report Details</h2>
-            <button className="action-btn close-btn" onClick={onClose}>
+            <h2 className="popup-title">Report Details - {report.reportType}</h2>
+            <button className="close-btn" onClick={onClose}>
               <X size={16} />
               Close
             </button>
@@ -203,23 +257,52 @@ const ReportDetailsPopup: React.FC<ReportDetailsPopupProps> = ({
 
           <div className="popup-body">
             <div className="report-header">
-              <h1 className="hospital-name">
-                Bhaktapur International Hospital
-              </h1>
-              <h2 className="report-title">{report.reportType}</h2>
+              <h1 className="hospital-name">Bhaktapur International Hospital</h1>
+              <p style={{ color: "#6b7280", margin: "0.5rem 0" }}>
+                Department: {report.department} | Serial No: {report.serialNumber}
+              </p>
             </div>
 
-            {/* Uploaded Document Section */}
-            {reportDetails.hasUploadedDocument && (
-              <div className="document-section">
-                <h4>Auto-Extracted Text:</h4>
-                <div className="document-text">{reportDetails.findings}</div>
+            {/* Patient and Report Info */}
+            <div className="patient-info">
+              <div className="info-item">
+                <User size={16} />
+                <span><strong>Patient:</strong> {report.patient}</span>
               </div>
-            )}
+              <div className="info-item">
+                <FileText size={16} />
+                <span><strong>Doctor:</strong> {report.doctor}</span>
+              </div>
+              <div className="info-item">
+                <ImageIcon size={16} />
+                <span><strong>Date:</strong> {new Date(report.date).toLocaleDateString()}</span>
+              </div>
+            </div>
 
-            {/* Image Placeholder */}
-            <div className="document-placeholder">
-              Document/Image Placeholder
+            {/* Uploaded Document/Image Section */}
+            <div className="document-section">
+              <h3 style={{ textAlign: "center", marginBottom: "1rem", color: "#1e293b" }}>
+                Uploaded Document/Image
+              </h3>
+              {report.imageUrl ? (
+                <img
+                  src={report.imageUrl}
+                  alt={`Report image for ${report.patient} - ${report.reportType}`}
+                  className="document-image"
+                  style={{ width: "100%", height: "auto" }}
+                />
+              ) : (
+                <div className="no-image-placeholder">
+                  <ImageIcon size={48} style={{ color: "#d1d5db", marginBottom: "0.5rem" }} />
+                  No image uploaded for this report
+                </div>
+              )}
+              {report.imageUrl && (
+                <div style={{ marginTop: "1rem", textAlign: "center" }}>
+                  <CheckCircle size={20} style={{ color: "#10b981", display: "inline" }} />
+                  <span style={{ marginLeft: "0.5rem", color: "#059669" }}>Image loaded successfully</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -227,7 +310,7 @@ const ReportDetailsPopup: React.FC<ReportDetailsPopupProps> = ({
           <div className="print-container">
             <button className="print-btn" onClick={handlePrint}>
               <Printer size={16} />
-              Print
+              Print Report
             </button>
           </div>
         </div>

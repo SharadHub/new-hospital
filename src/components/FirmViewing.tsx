@@ -4,31 +4,36 @@ import type React from "react"
 import { useState } from "react"
 import { ArrowLeft, ZoomIn, ZoomOut, RotateCw, Download, Maximize2, User, Calendar, FileText } from "lucide-react"
 
-interface Report {
-  id: string
-  serialNumber: number
-  patient: string
-  department: string
-  reportType: string
-  date: string
-  doctor: string
-  uploadedAt: string
-}
+import type { Report } from "../types"  // Import shared Report type
 
 interface FirmViewingProps {
   report: Report | null
+  firmImages?: string[]  // NEW: Optional prop for firm images (base64 or URLs)
   onBack: () => void
 }
 
-const FirmViewing: React.FC<FirmViewingProps> = ({ report, onBack }) => {
+const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack }) => {
   const [selectedImage, setSelectedImage] = useState(0)
   const [zoom, setZoom] = useState(100)
   const [rotation, setRotation] = useState(0)
 
   if (!report) return null
 
-  // Generate department-specific placeholder images
-  const getDepartmentImages = (department: string) => {
+  // Use actual firmImages (from props or report) if available, otherwise generate department-specific placeholder images
+  const getImages = () => {
+    console.log("FirmViewing - Received firmImages:", firmImages);
+  console.log("FirmViewing - Report firmImages:", report.firmImages);
+    // Prioritize props.firmImages (from App.tsx firmData lookup)
+    if (firmImages && firmImages.length > 0) {
+      return firmImages
+    }
+    // Fallback to report.firmImages (if stored directly)
+    if (report.firmImages && report.firmImages.length > 0) {
+      console.log("FirmViewing - Using report.firmImages:", report.firmImages);
+      return report.firmImages
+    }
+
+    // Final fallback to placeholders
     const baseImages = {
       "ct-scan": [
         "/ct-scan-brain-axial-view-medical-imaging.jpg",
@@ -59,10 +64,12 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, onBack }) => {
       holter: ["/holter-monitor-24-hour-ecg-chart.jpg", "/holter-monitoring-results.jpg", "/continuous-cardiac-monitoring-chart.jpg"],
     }
 
-    return baseImages[department as keyof typeof baseImages] || baseImages["x-ray"]
+    const fallback = baseImages[report.department.toLowerCase() as keyof typeof baseImages] || baseImages["x-ray"]
+    console.log("FirmViewing - Using fallback images:", fallback);
+    return fallback
   }
 
-  const images = getDepartmentImages(report.department.toLowerCase())
+  const images = getImages()
 
   const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200))
   const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 50))
@@ -412,4 +419,4 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, onBack }) => {
   )
 }
 
-export default FirmViewing
+export default FirmViewing;

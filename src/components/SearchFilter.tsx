@@ -1,13 +1,5 @@
 import React, { useState, useMemo } from "react";
-import {
-  Search,
-  // Filter,
-  Calendar,
-  User,
-  // Building2,
-  FileText,
-  X,
-} from "lucide-react";
+import { Search, Calendar, User, FileText, X } from "lucide-react";
 import { Patient, Report } from "../types";
 
 interface SearchFilterProps {
@@ -15,42 +7,60 @@ interface SearchFilterProps {
   reports: Report[];
 }
 
-const SearchFilter: React.FC<SearchFilterProps> = ({ patients, reports }) => {
+const SearchFilter: React.FC<SearchFilterProps> = ({
+  patients = [],
+  reports = [],
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const [activeTab, setActiveTab] = useState<"patients" | "reports">(
-    "patients"
-  );
+  const [activeTab, setActiveTab] = useState<"patients" | "reports">("patients");
 
   const departments = ["CT", "MRI", "ECG", "USG", "X-ray", "TMT", "Holter"];
 
+  // Helper function for safe string matching
+  const safeIncludes = (
+    str: string | undefined | null,
+    searchTerm: string
+  ): boolean => {
+    if (!str || !searchTerm) return false;
+    return str.toLowerCase().includes(searchTerm.toLowerCase());
+  };
+
   const filteredPatients = useMemo(() => {
+    if (!patients || !Array.isArray(patients)) return [];
     return patients.filter((patient) => {
       const matchesSearch =
         searchTerm === "" ||
-        patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        patient.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        patient.address.toLowerCase().includes(searchTerm.toLowerCase());
+        safeIncludes(patient.name, searchTerm) ||
+        safeIncludes(patient.number, searchTerm) ||
+        safeIncludes(patient.address, searchTerm);
 
       const matchesDepartment =
-        selectedDepartment === "" || patient.department === selectedDepartment;
+        selectedDepartment === "" ||
+        (patient.department && patient.department === selectedDepartment);
 
       const matchesDateRange = (() => {
         if (!dateFrom && !dateTo) return true;
-        const patientDate = new Date(patient.createdAt);
-        const fromDate = dateFrom ? new Date(dateFrom) : null;
-        const toDate = dateTo ? new Date(dateTo) : null;
+        if (!patient.createdAt) return false;
 
-        if (fromDate && toDate) {
-          return patientDate >= fromDate && patientDate <= toDate;
-        } else if (fromDate) {
-          return patientDate >= fromDate;
-        } else if (toDate) {
-          return patientDate <= toDate;
+        try {
+          const patientDate = new Date(patient.createdAt);
+          const fromDate = dateFrom ? new Date(dateFrom) : null;
+          const toDate = dateTo ? new Date(dateTo) : null;
+
+          if (fromDate && toDate) {
+            return patientDate >= fromDate && patientDate <= toDate;
+          } else if (fromDate) {
+            return patientDate >= fromDate;
+          } else if (toDate) {
+            return patientDate <= toDate;
+          }
+          return true;
+        } catch (error) {
+          return false;
         }
-        return true;
       })();
 
       return matchesSearch && matchesDepartment && matchesDateRange;
@@ -58,35 +68,47 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ patients, reports }) => {
   }, [patients, searchTerm, selectedDepartment, dateFrom, dateTo]);
 
   const filteredReports = useMemo(() => {
+    if (
+      !reports ||
+      !Array.isArray(reports) ||
+      !patients ||
+      !Array.isArray(patients)
+    )
+      return [];
     return reports.filter((report) => {
       const patient = patients.find((p) => p.id === report.patientId);
 
       const matchesSearch =
         searchTerm === "" ||
-        (patient &&
-          patient.name.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (patient &&
-          patient.number.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        report.reportType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.uploadedBy.toLowerCase().includes(searchTerm.toLowerCase());
+        safeIncludes(patient?.name, searchTerm) ||
+        safeIncludes(patient?.number, searchTerm) ||
+        safeIncludes(report.reportType, searchTerm) ||
+        safeIncludes(report.uploadedBy, searchTerm);
 
       const matchesDepartment =
-        selectedDepartment === "" || report.department === selectedDepartment;
+        selectedDepartment === "" ||
+        (report.department && report.department === selectedDepartment);
 
       const matchesDateRange = (() => {
         if (!dateFrom && !dateTo) return true;
-        const reportDate = new Date(report.uploadedAt);
-        const fromDate = dateFrom ? new Date(dateFrom) : null;
-        const toDate = dateTo ? new Date(dateTo) : null;
+        if (!report.uploadedAt) return false;
 
-        if (fromDate && toDate) {
-          return reportDate >= fromDate && reportDate <= toDate;
-        } else if (fromDate) {
-          return reportDate >= fromDate;
-        } else if (toDate) {
-          return reportDate <= toDate;
+        try {
+          const reportDate = new Date(report.uploadedAt);
+          const fromDate = dateFrom ? new Date(dateFrom) : null;
+          const toDate = dateTo ? new Date(dateTo) : null;
+
+          if (fromDate && toDate) {
+            return reportDate >= fromDate && reportDate <= toDate;
+          } else if (fromDate) {
+            return reportDate >= fromDate;
+          } else if (toDate) {
+            return reportDate <= toDate;
+          }
+          return true;
+        } catch (error) {
+          return false;
         }
-        return true;
       })();
 
       return matchesSearch && matchesDepartment && matchesDateRange;
@@ -104,11 +126,13 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ patients, reports }) => {
     searchTerm || selectedDepartment || dateFrom || dateTo;
 
   const getPatientName = (patientId: string) => {
+    if (!patients || !Array.isArray(patients)) return "Unknown Patient";
     const patient = patients.find((p) => p.id === patientId);
     return patient ? patient.name : "Unknown Patient";
   };
 
   const getPatientNumber = (patientId: string) => {
+    if (!patients || !Array.isArray(patients)) return "N/A";
     const patient = patients.find((p) => p.id === patientId);
     return patient ? patient.number : "N/A";
   };
@@ -213,8 +237,8 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ patients, reports }) => {
 
           .search-input:focus {
             outline: none;
-            ring: 2px solid #3b82f6;
-            border-color: transparent;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
           }
 
           .filter-select,
@@ -232,8 +256,8 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ patients, reports }) => {
           .filter-select:focus,
           .filter-date:focus {
             outline: none;
-            ring: 2px solid #3b82f6;
-            border-color: transparent;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5);
           }
 
           .results-section {
@@ -622,19 +646,27 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ patients, reports }) => {
                           <div className="patient-info">
                             <User size={20} color="#9ca3af" />
                             <div className="patient-details">
-                              <h4 className="patient-name">{patient.name}</h4>
-                              <p className="patient-number">{patient.number}</p>
+                              <h4 className="patient-name">
+                                {patient.name || "Unknown Patient"}
+                              </h4>
+                              <p className="patient-number">
+                                {patient.number || "No Number"}
+                              </p>
                             </div>
                           </div>
                           <span className="department-badge">
-                            {patient.department}
+                            {patient.department || "Unknown"}
                           </span>
                         </div>
-                        <p className="patient-address">{patient.address}</p>
+                        <p className="patient-address">
+                          {patient.address || "No address provided"}
+                        </p>
                         <div className="patient-date">
                           <Calendar size={12} />
                           Registered:{" "}
-                          {new Date(patient.createdAt).toLocaleDateString()}
+                          {patient.createdAt
+                            ? new Date(patient.createdAt).toLocaleDateString()
+                            : "Unknown date"}
                         </div>
                       </div>
                     ))}
@@ -660,7 +692,7 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ patients, reports }) => {
                             <FileText size={20} color="#9ca3af" />
                             <div className="report-details">
                               <h4 className="report-type">
-                                {report.reportType}
+                                {report.reportType || "Unknown Report"}
                               </h4>
                               <p className="report-patient">
                                 {getPatientName(report.patientId)} (
@@ -669,17 +701,21 @@ const SearchFilter: React.FC<SearchFilterProps> = ({ patients, reports }) => {
                             </div>
                           </div>
                           <span className="report-badge">
-                            {report.department}
+                            {report.department || "Unknown"}
                           </span>
                         </div>
-                        <p className="report-text">{report.reportText}</p>
+                        <p className="report-text">
+                          {report.reportText || "No report text available"}
+                        </p>
                         <div className="report-footer">
                           <div className="report-date">
                             <Calendar size={12} />
-                            {new Date(report.uploadedAt).toLocaleDateString()}
+                            {report.uploadedAt
+                              ? new Date(report.uploadedAt).toLocaleDateString()
+                              : "Unknown date"}
                           </div>
                           <div className="report-doctor">
-                            By: {report.uploadedBy}
+                            By: {report.uploadedBy || "Unknown"}
                           </div>
                         </div>
                       </div>

@@ -1,21 +1,23 @@
 export interface Patient {
   id: string;
   name: string;
-  number: string;
-  address: string;
   department: string;
+  number: string;
   createdAt: string;
 }
 
 export interface Report {
   id: string;
-  patientId: string;
-  department: string;
+  serialNumber: number;
+  patient: string;
+  department: string;  // e.g., "ctscan"
   reportType: string;
-  reportUrl?: string;
-  reportText: string;
+  date: string;  // ISO date string
+  doctor: string;
   uploadedAt: string;
-  uploadedBy: string;
+  extractedText?: string;
+  imageUrl?: string;
+  firmImages?: string[];  // Optional, if storing directly; but using separate firmData for now
 }
 
 export interface DashboardStats {

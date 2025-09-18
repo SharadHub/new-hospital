@@ -21,7 +21,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ onDepartmentSelect }) => {
     { name: "Mammography", color: "border-pink-400" },
     { name: "Dental X-Ray", color: "border-green-400" },
     { name: "Eye", color: "border-yellow-400" },
-    { name: "Doppler", color: "border-indigo-400" },
+    { name: "Dopler", color: "border-indigo-400" },
   ]
 
   const handleDepartmentClick = (departmentName: string) => {
