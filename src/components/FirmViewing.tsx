@@ -16,13 +16,14 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
   const [selectedImage, setSelectedImage] = useState(0)
   const [zoom, setZoom] = useState(100)
   const [rotation, setRotation] = useState(0)
+  const [isFullscreen, setIsFullscreen] = useState(false)
 
   if (!report) return null
 
   // Use actual firmImages (from props or report) if available, otherwise generate department-specific placeholder images
   const getImages = () => {
     console.log("FirmViewing - Received firmImages:", firmImages);
-  console.log("FirmViewing - Report firmImages:", report.firmImages);
+    console.log("FirmViewing - Report firmImages:", report.firmImages);
     // Prioritize props.firmImages (from App.tsx firmData lookup)
     if (firmImages && firmImages.length > 0) {
       return firmImages
@@ -71,12 +72,90 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
 
   const images = getImages()
 
-  const handleZoomIn = () => setZoom((prev) => Math.min(prev + 25, 200))
-  const handleZoomOut = () => setZoom((prev) => Math.max(prev - 25, 50))
-  const handleRotate = () => setRotation((prev) => (prev + 90) % 360)
-  const handleDownload = () => {
-    // In a real app, this would download the actual image
-    console.log("Downloading image:", images[selectedImage])
+  const handleZoomIn = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setZoom((prev) => Math.min(prev + 25, 300))
+  }
+
+  const handleZoomOut = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setZoom((prev) => Math.max(prev - 25, 25))
+  }
+
+  const handleRotate = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setRotation((prev) => (prev + 90) % 360)
+  }
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    try {
+      const link = document.createElement('a')
+      link.href = images[selectedImage]
+      link.download = `${report.department}-image-${selectedImage + 1}.jpg`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      console.log("Downloading image:", images[selectedImage])
+    } catch (error) {
+      console.error("Error downloading image:", error)
+      alert("Download failed. This might be due to CORS restrictions.")
+    }
+  }
+
+  const handleFullscreen = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    if (!isFullscreen) {
+      // Enter fullscreen
+      const element = document.documentElement
+      if (element.requestFullscreen) {
+        element.requestFullscreen()
+      } else if ((element as any).webkitRequestFullscreen) {
+        (element as any).webkitRequestFullscreen()
+      } else if ((element as any).mozRequestFullScreen) {
+        (element as any).mozRequestFullScreen()
+      } else if ((element as any).msRequestFullscreen) {
+        (element as any).msRequestFullscreen()
+      }
+      setIsFullscreen(true)
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen()
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen()
+      } else if ((document as any).mozCancelFullScreen) {
+        (document as any).mozCancelFullScreen()
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen()
+      }
+      setIsFullscreen(false)
+    }
+  }
+
+  const handleThumbnailClick = (index: number, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setSelectedImage(index)
+    // Reset zoom and rotation when switching images
+    setZoom(100)
+    setRotation(0)
+  }
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    console.log("Image loaded successfully:", e.currentTarget.src)
+  }
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    console.error("Image failed to load:", e.currentTarget.src)
+    // You could set a fallback image here
+    e.currentTarget.src = "/placeholder.svg"
   }
 
   const getDepartmentName = (dept: string) => {
@@ -90,6 +169,13 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
       holter: "Holter",
     }
     return names[dept] || dept.toUpperCase()
+  }
+
+  const resetView = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setZoom(100)
+    setRotation(0)
   }
 
   return (
@@ -257,6 +343,11 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
           border-color: #9ca3af;
         }
 
+        .control-button:active {
+          transform: translateY(1px);
+          background: #e5e7eb;
+        }
+
         .zoom-display {
           font-size: 0.875rem;
           font-weight: 600;
@@ -283,6 +374,7 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           transition: transform 0.3s ease;
           transform: scale(${zoom / 100}) rotate(${rotation}deg);
+          cursor: pointer;
         }
 
         .image-info {
@@ -294,6 +386,17 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
           padding: 0.5rem 1rem;
           border-radius: 6px;
           font-size: 0.875rem;
+        }
+
+        .reset-button {
+          background: #10b981 !important;
+          color: white !important;
+          border-color: #10b981 !important;
+        }
+
+        .reset-button:hover {
+          background: #059669 !important;
+          border-color: #059669 !important;
         }
 
         /* Responsive design */
@@ -368,7 +471,9 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
                 src={image || "/placeholder.svg"}
                 alt={`${report.department} image ${index + 1}`}
                 className={`thumbnail ${selectedImage === index ? "active" : ""}`}
-                onClick={() => setSelectedImage(index)}
+                onClick={(e) => handleThumbnailClick(index, e)}
+                onLoad={handleImageLoad}
+                onError={handleImageError}
               />
             ))}
           </div>
@@ -386,6 +491,9 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
                 <ZoomIn size={16} />
                 Zoom In
               </button>
+              <button className="control-button reset-button" onClick={resetView}>
+                Reset View
+              </button>
             </div>
             <div className="control-group">
               <button className="control-button" onClick={handleRotate}>
@@ -396,9 +504,9 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
                 <Download size={16} />
                 Download
               </button>
-              <button className="control-button">
+              <button className="control-button" onClick={handleFullscreen}>
                 <Maximize2 size={16} />
-                Fullscreen
+                {isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
               </button>
             </div>
           </div>
@@ -408,9 +516,12 @@ const FirmViewing: React.FC<FirmViewingProps> = ({ report, firmImages, onBack })
               src={images[selectedImage] || "/placeholder.svg"}
               alt={`${report.department} image ${selectedImage + 1}`}
               className="main-image"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              onClick={(e) => e.preventDefault()}
             />
             <div className="image-info">
-              Image {selectedImage + 1} of {images.length} | {getDepartmentName(report.department)}
+              Image {selectedImage + 1} of {images.length} | {getDepartmentName(report.department)} | {zoom}% | {rotation}°
             </div>
           </div>
         </div>
