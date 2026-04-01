@@ -479,7 +479,7 @@ const Layout: React.FC<LayoutProps> = ({
               </div> */}
               <div className="brand-text">
                 <img src={logo}></img>
-                <h1>Bhaktapur International Hospital</h1>
+                <h1>Hospital</h1>
                 <p>Radiology Department</p>
               </div>
             </div>

@@ -108,7 +108,7 @@ const DepartmentView: React.FC<DepartmentViewProps> = ({
         </head>
         <body>
           <div class="header">
-            <h1>Bhaktapur International Hospital</h1>
+            <h1>Hospital</h1>
             <h2>Radiology Department - ${departmentName}</h2>
           </div>
           <div class="patient-info">

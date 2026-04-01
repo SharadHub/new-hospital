@@ -257,7 +257,7 @@ const ReportDetailsPopup: React.FC<ReportDetailsPopupProps> = ({
 
           <div className="popup-body">
             <div className="report-header">
-              <h1 className="hospital-name">Bhaktapur International Hospital</h1>
+              <h1 className="hospital-name">Hospital</h1>
               <p style={{ color: "#6b7280", margin: "0.5rem 0" }}>
                 Department: {report.department} | Serial No: {report.serialNumber}
               </p>
